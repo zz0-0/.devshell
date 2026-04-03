@@ -17,8 +17,6 @@ in
 pkgs.mkShell {
   buildInputs = with pkgs; [
     ltex-ls-plus
-    markdown-oxide
-    rumdl
   ] ++ extraPackages;
 
   shellHook = ''
