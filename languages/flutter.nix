@@ -1,0 +1,141 @@
+{ pkgs, ... }:
+{ extraPackages ? [], withEmulator ? false }:
+
+let
+  lib = pkgs.lib;
+
+  # Note: Requires config.android_sdk.accept_license = true; to be set in your
+  # top-level nixpkgs configuration (e.g., in flake.nix or ~/.config/nixpkgs/config.nix)
+  androidComposition = pkgs.androidenv.composeAndroidPackages {
+    buildToolsVersions = [ "36.0.0" "28.0.3" ];
+    platformVersions   = [ "36" "28" ];
+    abiVersions =
+      [ "armeabi-v7a" "arm64-v8a" ]
+      ++ lib.optional withEmulator "x86_64";
+
+    includeEmulator     = withEmulator;
+    includeSystemImages = withEmulator;
+  };
+
+  androidSdk = androidComposition.androidsdk;
+
+  vscodeSettings = {
+    "dart.flutterSdkPath" = ".flutter-sdk";
+    "dart.sdkPath" = ".flutter-sdk/bin/cache/dart-sdk";
+    "flutter.sdkPath" = ".flutter-sdk";
+  };
+  settingsJson = builtins.toJSON vscodeSettings;
+
+in pkgs.mkShell {
+  ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
+
+  buildInputs = with pkgs; [
+    flutter
+    androidSdk
+    jdk17
+    gradle
+    cmake
+    ninja
+    pkg-config
+    sysprof
+    clang
+    chromium
+    gtk3
+    glib
+    mesa-demos
+    xorg.libX11
+    xorg.libXcursor
+    xorg.libXrandr
+    xorg.libXi
+    libxkbcommon
+    libGL
+    libglvnd
+    wayland
+    curl
+    unzip
+    zip
+    which
+  ] ++ extraPackages;
+
+  shellHook = ''
+    export TERM=xterm-256color
+    ln -sfn "${pkgs.flutter}" .flutter-sdk
+
+    # Set pkg-config paths for Linux desktop development
+    export PKG_CONFIG_PATH="${pkgs.sysprof}/lib/pkgconfig:${pkgs.glib.dev}/lib/pkgconfig:${pkgs.gtk3}/lib/pkgconfig:${pkgs.xorg.libX11}/lib/pkgconfig"
+
+    mkdir -p .vscode
+    if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
+      echo '${settingsJson}' > .vscode/settings.json
+    fi
+
+    export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+    export CHROME_EXECUTABLE=${pkgs.chromium}/bin/chromium
+
+    flutter_dep_hash=""
+    if [ -f "pubspec.yaml" ] || [ -f "pubspec.lock" ]; then
+      flutter_dep_hash=$(cat pubspec.yaml pubspec.lock 2>/dev/null | sha256sum | cut -d' ' -f1)
+    fi
+
+    flutter_dep_stamp_file=".dart_tool/.deps.stamp"
+    flutter_previous_dep_hash=""
+    if [ -f "$flutter_dep_stamp_file" ]; then
+      flutter_previous_dep_hash=$(cat "$flutter_dep_stamp_file")
+    fi
+
+    if [ -n "$flutter_dep_hash" ] && [ "$flutter_dep_hash" != "$flutter_previous_dep_hash" ]; then
+      echo "📦 Flutter manifest changed. Running flutter pub get..."
+      if flutter pub get; then
+        mkdir -p .dart_tool
+        echo "$flutter_dep_hash" > "$flutter_dep_stamp_file"
+        # Run build_runner if freezed is in dependencies
+        if grep -iq "freezed" pubspec.yaml; then
+          echo "🔄 Freezed detected. Running build_runner..."
+          flutter pub run build_runner build --delete-conflicting-outputs || true
+        fi
+      fi
+    elif [ -n "$flutter_dep_hash" ]; then
+      echo "✅ Flutter dependencies unchanged. Skipping pub get."
+    fi
+
+    flutter_license_stamp_file=".dart_tool/.android_licenses.stamp"
+    if [ ! -f "$flutter_license_stamp_file" ]; then
+      echo "📄 Attempting to accept Android SDK licenses..."
+
+      # Method 1: Try sdkmanager directly (more reliable)
+      if command -v sdkmanager >/dev/null 2>&1; then
+        echo "Using sdkmanager to accept licenses..."
+        if yes | sdkmanager --licenses >/dev/null 2>&1; then
+          mkdir -p .dart_tool
+          touch "$flutter_license_stamp_file"
+          echo "✅ Android SDK licenses accepted via sdkmanager"
+        else
+          echo "⚠️ sdkmanager license acceptance failed, trying flutter doctor..."
+        fi
+      fi
+
+      # Method 2: Fall back to flutter doctor
+      if [ ! -f "$flutter_license_stamp_file" ]; then
+        echo "Using flutter doctor to accept licenses..."
+        if yes | flutter doctor --android-licenses >/dev/null 2>&1; then
+          mkdir -p .dart_tool
+          touch "$flutter_license_stamp_file"
+          echo "✅ Android SDK licenses accepted via flutter doctor"
+        else
+          echo "⚠️ Could not automatically accept Android SDK licenses"
+          echo "⚠️ You may need to run: flutter doctor --android-licenses"
+          echo "⚠️ Or: sdkmanager --licenses"
+        fi
+      fi
+    else
+      echo "✅ Android SDK licenses already accepted"
+    fi
+
+    if [ -n "$PS1" ]; then
+      echo "Flutter environment ready (${if withEmulator then "emulator" else "standard"})"
+    fi
+  '';
+  passthru = {
+    inherit vscodeSettings;
+  };
+}
