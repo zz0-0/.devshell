@@ -66,29 +66,29 @@ pkgs.mkShell {
 
     # Setup Zed LSP wrapper for rust-analyzer (NixOS compatible)
     mkdir -p .zed/lsp
-    cat > .zed/lsp/rust-analyzer << 'RUST_ANALYZER_WRAPPER'
-    #!/usr/bin/env bash
-    # Reusable rust-analyzer wrapper for Zed on NixOS
-    # Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
-    set -euo pipefail
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+    tee .zed/lsp/rust-analyzer > /dev/null << 'RUST_ANALYZER_WRAPPER'
+#!/usr/bin/env bash
+# Reusable rust-analyzer wrapper for Zed on NixOS
+# Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-    # Use direnv to get the correct rust-analyzer binary, bypassing rustup shadowing
-    exec direnv exec "$PROJECT_DIR" bash -c '
-      for d in $(echo "$PATH" | tr ":" "\n"); do
-        # Skip rustup directories and .zed/lsp wrapper directories
-        if [[ "$d" == *rustup* ]] || [[ "$d" == *".zed/lsp"* ]]; then
-          continue
-        fi
-        if [[ -f "$d/rust-analyzer" ]] && [[ ! -L "$d/rust-analyzer" || "$(readlink -f "$d/rust-analyzer")" != *rustup* ]]; then
-          exec "$d/rust-analyzer" "$@"
-        fi
-      done
-      echo "Error: rust-analyzer not found in direnv environment" >&2
-      exit 1
-    ' -- "$@"
-    RUST_ANALYZER_WRAPPER
+# Use direnv to get the correct rust-analyzer binary, bypassing rustup shadowing
+exec direnv exec "$PROJECT_DIR" bash -c '
+  for d in $(echo "$PATH" | tr ":" "\n"); do
+    # Skip rustup directories and .zed/lsp wrapper directories
+    if [[ "$d" == *rustup* ]] || [[ "$d" == *".zed/lsp"* ]]; then
+      continue
+    fi
+    if [[ -f "$d/rust-analyzer" ]] && [[ ! -L "$d/rust-analyzer" || "$(readlink -f "$d/rust-analyzer")" != *rustup* ]]; then
+      exec "$d/rust-analyzer" "$@"
+    fi
+  done
+  echo "Error: rust-analyzer not found in direnv environment" >&2
+  exit 1
+' -- "$@"
+RUST_ANALYZER_WRAPPER
     chmod +x .zed/lsp/rust-analyzer
 
     # Write Zed settings fragment for merging
