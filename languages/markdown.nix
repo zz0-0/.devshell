@@ -27,8 +27,8 @@ let
     "languages" = {
       "Markdown" = {
         "format_on_save" = "on"
-      }
-    },
+      };
+    };
   };
 in
 pkgs.mkShell {
