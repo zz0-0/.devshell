@@ -26,48 +26,6 @@
           }
         );
 
-      # Helper function to combine multiple mkShell derivations
-      combineShells = pkgs: shells:
-        let
-          # Extract attributes from all shells
-          shellsList = builtins.map (shell: {
-            buildInputs = shell.buildInputs or [];
-            shellHook = shell.shellHook or "";
-            # Get vscodeSettings from passthru or directly from shell
-            vscodeSettings = (shell.passthru or {}).vscodeSettings or shell.vscodeSettings or {};
-          }) shells;
-
-          # Merge buildInputs (unique)
-          mergedBuildInputs = pkgs.lib.lists.unique (pkgs.lib.lists.flatten
-            (builtins.map (s: s.buildInputs) shellsList));
-
-          # Concatenate shellHook
-          mergedShellHook = pkgs.lib.strings.concatStringsSep "\n"
-            (builtins.map (s: s.shellHook) shellsList);
-
-          # Recursively merge vscodeSettings (later shells override earlier ones)
-          mergedVscodeSettings = pkgs.lib.foldl
-            (acc: shell: pkgs.lib.recursiveUpdate acc shell.vscodeSettings)
-            {}
-            shellsList;
-
-        in
-        pkgs.mkShell {
-          buildInputs = mergedBuildInputs;
-          shellHook = mergedShellHook;
-          passthru = {
-            vscodeSettings = mergedVscodeSettings;
-          };
-        };
-
-      # Helper to create a combined shell with Nix+Markdown + base language
-      makeCombined = pkgs: baseFn: nixFn: markdownFn: args:
-        combineShells pkgs [
-          (nixFn { })
-          (markdownFn { })
-          (baseFn args)
-        ];
-
     in
     {
       lib = forAllSystems ({ pkgs, system, nixpkgs }:
@@ -80,30 +38,14 @@
           nixFn = import ./languages/nix.nix pkgs;
           markdownFn = import ./languages/markdown.nix pkgs;
 
-          # Create combined versions with Nix+Markdown
-          latexCombined = makeCombined pkgs latexFn nixFn markdownFn;
-          pythonCombined = makeCombined pkgs pythonFn nixFn markdownFn;
-          rustCombined = makeCombined pkgs rustFn nixFn markdownFn;
-          flutterCombined = makeCombined pkgs flutterFn nixFn markdownFn;
-
         in {
-          # Main exports: Combined versions with Nix+Markdown included
-          latex = latexCombined;
-          python = pythonCombined;
-          rust = rustCombined;
-          flutter = flutterCombined;
-
-          # Standalone versions (without Nix+Markdown) for advanced use
-          latexStandalone = latexFn;
-          pythonStandalone = pythonFn;
-          rustStandalone = rustFn;
-          flutterStandalone = flutterFn;
+          # All exports are standalone - combine them explicitly in project flakes
+          rust = rustFn;
+          python = pythonFn;
+          flutter = flutterFn;
+          latex = latexFn;
           nix = nixFn;
           markdown = markdownFn;
-
-          # Utility functions
-          combineShells = combineShells pkgs;
-          withNixAndMarkdown = baseFn: makeCombined pkgs baseFn nixFn markdownFn;
         });
     };
 }

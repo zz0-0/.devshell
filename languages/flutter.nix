@@ -26,6 +26,21 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
+  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  zedSettings = {
+    "lsp" = {
+      "dart" = {
+        "binary" = {
+          "path" = "${pkgs.flutter}/bin/cache/dart-sdk/bin/dart";
+        };
+        "args" = [
+          "${pkgs.flutter}/bin/cache/dart-sdk/bin/snapshots/analysis_server.dart.snapshot"
+          "--lsp"
+        ];
+      };
+    };
+  };
+
 in pkgs.mkShell {
   ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
 
@@ -136,6 +151,6 @@ in pkgs.mkShell {
     fi
   '';
   passthru = {
-    inherit vscodeSettings;
+    inherit vscodeSettings zedSettings;
   };
 }

@@ -14,6 +14,28 @@ let
     "editor.defaultFormatter" = "jnoortheen.nix-ide";
   };
   settingsJson = builtins.toJSON vscodeSettings;
+
+  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  zedSettings = {
+    "lsp" = {
+      "nil" = {
+        "binary" = {
+          "path" = "${pkgs.nil}/bin/nil";
+        };
+      };
+      "nixd" = {
+        "binary" = {
+          "path" = "${pkgs.nixd}/bin/nixd";
+        };
+      };
+    };
+    # Disable Nix extension LSP management and force explicit binaries
+    "languages" = {
+      "Nix" = {
+        "language_servers" = [ "nix" "nixd" ];
+      };
+    };
+  };
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
@@ -44,8 +66,9 @@ pkgs.mkShell {
       echo '${settingsJson}' > .vscode/settings.json
     fi
     echo "📝 VS Code settings synchronized."
+
   '';
   passthru = {
-    inherit vscodeSettings;
+    inherit vscodeSettings zedSettings;
   };
 }

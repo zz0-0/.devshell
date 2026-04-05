@@ -57,7 +57,18 @@ pkgs.mkShell {
     fi
   '';
 
+  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  zedSettings = {
+    "lsp" = {
+      "texlab" = {
+        "binary" = {
+          "path" = "${pkgs.texlab}/bin/texlab";
+        };
+      };
+    };
+  };
+
   passthru = {
-    inherit vscodeSettings;
+    inherit vscodeSettings zedSettings;
   };
 }

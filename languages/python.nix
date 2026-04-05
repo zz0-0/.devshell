@@ -14,6 +14,17 @@ let
     "python.analysis.typeCheckingMode" = "basic";
   };
   settingsJson = builtins.toJSON vscodeSettings;
+
+  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  zedSettings = {
+    "lsp" = {
+      "pyright" = {
+        "binary" = {
+          "path" = "${pkgs.pyright}/bin/pyright-langserver";
+        };
+      };
+    };
+  };
 in
 pkgs.mkShell {
   buildInputs = [
@@ -37,6 +48,7 @@ pkgs.mkShell {
     if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
       echo '${settingsJson}' > .vscode/settings.json
     fi
+
 
     if [ ! -d ".venv" ]; then
       python -m venv .venv
@@ -82,6 +94,6 @@ pkgs.mkShell {
     fi
   '';
   passthru = {
-    inherit vscodeSettings;
+    inherit vscodeSettings zedSettings;
   };
 }

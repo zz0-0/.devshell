@@ -11,6 +11,17 @@ let
     "editor.defaultFormatter" = "rust-lang.rust-analyzer";
   };
   settingsJson = builtins.toJSON vscodeSettings;
+
+  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  zedSettings = {
+    "lsp" = {
+      "rust-analyzer" = {
+        "binary" = {
+          "path" = "${pkgs.rust-analyzer}/bin/rust-analyzer";
+        };
+      };
+    };
+  };
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
@@ -34,6 +45,7 @@ pkgs.mkShell {
     if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
       echo '${settingsJson}' > .vscode/settings.json
     fi
+
 
     rust_dep_hash=""
     if [ -f "Cargo.toml" ] || [ -f "Cargo.lock" ]; then
@@ -66,6 +78,6 @@ pkgs.mkShell {
     echo "✅ Rust toolchain ready. Use 'cargo build' to start."
   '';
   passthru = {
-    inherit vscodeSettings;
+    inherit vscodeSettings zedSettings;
   };
 }

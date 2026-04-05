@@ -13,6 +13,17 @@ let
     };
   };
   settingsJson = builtins.toJSON vscodeSettings;
+
+  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  zedSettings = {
+    "lsp" = {
+      "ltex-ls" = {
+        "binary" = {
+          "path" = "${pkgs.ltex-ls-plus}/bin/ltex-ls";
+        };
+      };
+    };
+  };
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
@@ -29,6 +40,6 @@ pkgs.mkShell {
   '';
 
   passthru = {
-    inherit vscodeSettings;
+    inherit vscodeSettings zedSettings;
   };
 }
