@@ -127,16 +127,16 @@ RUST_ANALYZER_WRAPPER
           return output;
         }
         const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
-        fs.writeFileSync('.zed/settings.json', JSON.stringify(merged, null, 2) + '\n');
+        // Replace __PROJECT_DIR__ placeholder with actual project directory
+        const projectDir = process.env.PWD || process.cwd();
+        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
+        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
         console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
       "
     else
-      echo '${zedFragmentJson}' > .zed/settings.json
+      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
       echo "⚠️  Node not available. Using Rust Zed settings only."
     fi
-
-    # Replace placeholder with actual project directory
-    sed -i "s|__PROJECT_DIR__|$PWD|g" .zed/settings.json
 
     rust_dep_hash=""
     if [ -f "Cargo.toml" ] || [ -f "Cargo.lock" ]; then

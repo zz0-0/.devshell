@@ -49,16 +49,13 @@ pkgs.mkShell {
     cat > .zed/lsp/ltex-ls << 'LTEX_WRAPPER'
 #!/usr/bin/env bash
 # Reusable ltex-ls wrapper for Zed on NixOS
-# Finds the nearest .envrc and uses direnv to run ltex-ls
+# Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
 set -euo pipefail
-dir="$PWD"
-while [[ "$dir" != "/" ]]; do
-  if [[ -f "$dir/.envrc" ]]; then
-    exec direnv exec "$dir" ltex-ls "$@"
-  fi
-  dir="$(dirname "$dir")"
-done
-exec ltex-ls "$@"
+SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+# Use direnv to run ltex-ls with the correct environment
+exec direnv exec "$PROJECT_DIR" ltex-ls "$@"
 LTEX_WRAPPER
     chmod +x .zed/lsp/ltex-ls
 
@@ -98,16 +95,16 @@ LTEX_WRAPPER
           return output;
         }
         const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
-        fs.writeFileSync('.zed/settings.json', JSON.stringify(merged, null, 2) + '\n');
+        // Replace __PROJECT_DIR__ placeholder with actual project directory
+        const projectDir = process.env.PWD || process.cwd();
+        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
+        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
         console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
       "
     else
-      echo '${zedFragmentJson}' > .zed/settings.json
+      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
       echo "⚠️  Node not available. Using Markdown Zed settings only."
     fi
-
-    # Replace placeholder with actual project directory
-    sed -i "s|__PROJECT_DIR__|$PWD|g" .zed/settings.json
   '';
 
   passthru = {
