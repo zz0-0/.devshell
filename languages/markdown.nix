@@ -20,9 +20,15 @@ let
       "ltex" = {
         "binary" = {
           "path" = "${pkgs.ltex-ls-plus}/bin/ltex-ls";
+          "path_lookup" = "true";
         };
       };
     };
+    "languages" = {
+      "Markdown" = {
+        "format_on_save" = "on"
+      }
+    },
   };
 in
 pkgs.mkShell {

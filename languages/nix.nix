@@ -18,14 +18,10 @@ let
   # Zed LSP settings with direct nix-store paths (merged by combined shell)
   zedSettings = {
     "lsp" = {
-      "nix" = {
-        "binary" = {
-          "path_lookup" = "true";
-        };
-      };
       "nixd" = {
         "binary" = {
           "path" = "${pkgs.nixd}/bin/nixd";
+          "path_lookup" = "true";
         };
       };
     };

@@ -63,6 +63,7 @@ pkgs.mkShell {
       "texlab" = {
         "binary" = {
           "path" = "${pkgs.texlab}/bin/texlab";
+          "path_lookup" = "true";
         };
       };
     };

@@ -18,6 +18,7 @@ let
       "rust-analyzer" = {
         "binary" = {
           "path" = "${pkgs.rust-analyzer}/bin/rust-analyzer";
+          "path_lookup" = "true";
         };
       };
     };
@@ -28,9 +29,11 @@ pkgs.mkShell {
     # Toolchain
     cargo
     rustc
+    rustup
     rust-analyzer
     rustfmt
     clippy
+    lldb
   ] ++ extraPackages;
 
   # Environment variables for compilation

@@ -32,6 +32,7 @@ let
       "dart" = {
         "binary" = {
           "path" = "${pkgs.flutter}/bin/cache/dart-sdk/bin/dart";
+          "path_lookup" = "true";
         };
         "args" = [
           "${pkgs.flutter}/bin/cache/dart-sdk/bin/snapshots/analysis_server.dart.snapshot"
@@ -45,6 +46,7 @@ in pkgs.mkShell {
   ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
 
   buildInputs = with pkgs; [
+    dart
     flutter
     androidSdk
     jdk17

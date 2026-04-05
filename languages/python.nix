@@ -21,6 +21,7 @@ let
       "pyright" = {
         "binary" = {
           "path" = "${pkgs.pyright}/bin/pyright-langserver";
+          "path_lookup" = "true";
         };
       };
     };
