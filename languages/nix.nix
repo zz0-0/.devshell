@@ -91,7 +91,7 @@ NIXD_WRAPPER
 #!/usr/bin/env bash
 # Reusable nil wrapper for Zed on NixOS
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "'${BASH_SOURCE[0]}'")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 exec direnv exec "$PROJECT_DIR" nil "$@" 2>/dev/null
 NIL_WRAPPER
