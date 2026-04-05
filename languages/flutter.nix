@@ -26,19 +26,10 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  # Zed LSP settings (binary path resolved from direnv-provided PATH)
   zedSettings = {
     "lsp" = {
-      "dart" = {
-        "binary" = {
-          "path" = "${pkgs.flutter}/bin/cache/dart-sdk/bin/dart";
-          "path_lookup" = "true";
-        };
-        "args" = [
-          "${pkgs.flutter}/bin/cache/dart-sdk/bin/snapshots/analysis_server.dart.snapshot"
-          "--lsp"
-        ];
-      };
+      "dart" = {};
     };
   };
 

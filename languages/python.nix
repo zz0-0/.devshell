@@ -15,15 +15,10 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  # Zed LSP settings (binary path resolved from direnv-provided PATH)
   zedSettings = {
     "lsp" = {
-      "pyright" = {
-        "binary" = {
-          "path" = "${pkgs.pyright}/bin/pyright-langserver";
-          "path_lookup" = "true";
-        };
-      };
+      "pyright" = {};
     };
   };
 in

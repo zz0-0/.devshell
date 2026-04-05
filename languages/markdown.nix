@@ -14,15 +14,10 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  # Zed LSP settings (binary path resolved from direnv-provided PATH)
   zedSettings = {
     "lsp" = {
-      "ltex" = {
-        "binary" = {
-          "path" = "${pkgs.ltex-ls-plus}/bin/ltex-ls";
-          "path_lookup" = "true";
-        };
-      };
+      "ltex" = {};
     };
     "languages" = {
       "Markdown" = {

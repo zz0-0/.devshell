@@ -12,15 +12,10 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  # Zed LSP settings (binary path resolved from direnv-provided PATH)
   zedSettings = {
     "lsp" = {
-      "rust-analyzer" = {
-        "binary" = {
-          "path" = "${pkgs.rust-analyzer}/bin/rust-analyzer";
-          "path_lookup" = "true";
-        };
-      };
+      "rust-analyzer" = {};
     };
   };
 in

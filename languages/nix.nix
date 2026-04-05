@@ -15,15 +15,10 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  # Zed LSP settings (binary path resolved from direnv-provided PATH)
   zedSettings = {
     "lsp" = {
-      "nixd" = {
-        "binary" = {
-          "path" = "${pkgs.nixd}/bin/nixd";
-          "path_lookup" = "true";
-        };
-      };
+      "nixd" = {};
     };
     # Disable Nix extension LSP management and force explicit binaries
     "languages" = {
@@ -55,7 +50,6 @@ pkgs.mkShell {
     # 2. Create a symlink named EXACTLY 'nixfmt' (what the extension wants)
     # We use 'nixfmt' as the source
     ln -sf "$(type -p nixfmt)" .bin/nixfmt
-    ln -sf "$(type -p nil)" .bin/nil
 
     # 3. FORCE this folder into the PATH of this shell session
     export PATH="$PWD/.bin:$PATH"

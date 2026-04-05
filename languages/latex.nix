@@ -57,15 +57,10 @@ pkgs.mkShell {
     fi
   '';
 
-  # Zed LSP settings with direct nix-store paths (merged by combined shell)
+  # Zed LSP settings (binary path resolved from direnv-provided PATH)
   zedSettings = {
     "lsp" = {
-      "texlab" = {
-        "binary" = {
-          "path" = "${pkgs.texlab}/bin/texlab";
-          "path_lookup" = "true";
-        };
-      };
+      "texlab" = {};
     };
   };
 
