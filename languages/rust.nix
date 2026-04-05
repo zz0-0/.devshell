@@ -87,7 +87,7 @@ exec direnv exec "$PROJECT_DIR" bash -c '
   done
   echo "Error: rust-analyzer not found in direnv environment" >&2
   exit 1
-' -- "$@" 2>/dev/null
+' -- "$@" 2>/dev/null 2>/dev/null
 RUST_ANALYZER_WRAPPER
     chmod +x .zed/lsp/rust-analyzer
 

@@ -82,7 +82,7 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # Use direnv to run nixd with the correct environment
 # Redirect stderr to /dev/null to suppress shellHook output that interferes with LSP
-exec direnv exec "$PROJECT_DIR" nixd "$@" 2>/dev/null
+exec direnv exec "$PROJECT_DIR" nixd "$@" 2>/dev/null 2>/dev/null
 NIXD_WRAPPER
     chmod +x .zed/lsp/nixd
 
