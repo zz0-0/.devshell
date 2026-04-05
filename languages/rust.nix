@@ -71,7 +71,7 @@ pkgs.mkShell {
 # Reusable rust-analyzer wrapper for Zed on NixOS
 # Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # Use direnv to get the correct rust-analyzer binary, bypassing rustup shadowing
