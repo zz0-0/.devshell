@@ -30,7 +30,7 @@ let
     "lsp" = {
       "nixd" = {
         "binary" = {
-          "path" = "\${PWD}/.zed/lsp/nixd";
+          "path" = "__PROJECT_DIR__/.zed/lsp/nixd";
         };
       };
     };
@@ -126,6 +126,9 @@ NIXD_WRAPPER
       echo '${zedFragmentJson}' > .zed/settings.json
       echo "⚠️  Node not available. Using Nix Zed settings only."
     fi
+
+    # Replace placeholder with actual project directory
+    sed -i "s|__PROJECT_DIR__|$PWD|g" .zed/settings.json
 
   '';
   passthru = {

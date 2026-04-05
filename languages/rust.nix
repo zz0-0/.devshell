@@ -23,7 +23,7 @@ let
     "lsp" = {
       "rust-analyzer" = {
         "binary" = {
-          "path" = "\${PWD}/.zed/lsp/rust-analyzer";
+          "path" = "__PROJECT_DIR__/.zed/lsp/rust-analyzer";
         };
         "initialization_options" = {
           "cargo" = {
@@ -137,6 +137,9 @@ RUST_ANALYZER_WRAPPER
       echo '${zedFragmentJson}' > .zed/settings.json
       echo "⚠️  Node not available. Using Rust Zed settings only."
     fi
+
+    # Replace placeholder with actual project directory
+    sed -i "s|__PROJECT_DIR__|$PWD|g" .zed/settings.json
 
     rust_dep_hash=""
     if [ -f "Cargo.toml" ] || [ -f "Cargo.lock" ]; then

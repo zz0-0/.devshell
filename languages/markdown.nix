@@ -24,7 +24,7 @@ let
     "lsp" = {
       "ltex" = {
         "binary" = {
-          "path" = "\${PWD}/.zed/lsp/ltex-ls";
+          "path" = "__PROJECT_DIR__/.zed/lsp/ltex-ls";
         };
       };
     };
@@ -105,6 +105,9 @@ LTEX_WRAPPER
       echo '${zedFragmentJson}' > .zed/settings.json
       echo "⚠️  Node not available. Using Markdown Zed settings only."
     fi
+
+    # Replace placeholder with actual project directory
+    sed -i "s|__PROJECT_DIR__|$PWD|g" .zed/settings.json
   '';
 
   passthru = {
