@@ -39,7 +39,6 @@ in
 pkgs.mkShell {
   buildInputs = with pkgs; [
     ltex-ls-plus
-    pkgs.jre21
   ] ++ extraPackages;
 
   shellHook = ''
