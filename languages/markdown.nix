@@ -26,7 +26,7 @@ let
     };
     "languages" = {
       "Markdown" = {
-        "format_on_save" = "on"
+        "format_on_save" = "on";
       };
     };
   };
