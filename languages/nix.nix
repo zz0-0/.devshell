@@ -16,25 +16,26 @@ let
   settingsJson = builtins.toJSON vscodeSettings;
 
   # Zed LSP settings (binary path resolved from direnv-provided PATH)
-  zedSettings = {
-    "lsp" = {
-      "nixd" = {};
-    };
-    # Disable Nix extension LSP management and force explicit binaries
-    "languages" = {
-      "Nix" = {
-        "language_servers" = [ "nixd" "!nil" ];
-        "formatter" = {
-          "external" = {
-            "command" = "nixfmt";
-          };
-        };
-      };
-    };
-  };
+  # zedSettings = {
+  #   "lsp" = {
+  #     "nixd" = {};
+  #   };
+  #   # Disable Nix extension LSP management and force explicit binaries
+  #   "languages" = {
+  #     "Nix" = {
+  #       "language_servers" = [ "nixd" "!nil" ];
+  #       "formatter" = {
+  #         "external" = {
+  #           "command" = "nixfmt";
+  #         };
+  #       };
+  #     };
+  #   };
+  # };
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
+    nil
     nixd
     statix
     nixfmt
@@ -63,6 +64,7 @@ pkgs.mkShell {
 
   '';
   passthru = {
-    inherit vscodeSettings zedSettings;
+    # zedSettings
+    inherit vscodeSettings;
   };
 }
