@@ -14,6 +14,7 @@ let
 
   # Calculate the absolute path to the bin directory in the Nix store
   texBinPath = "${texEnv}/bin";
+  texlabPath = "${pkgs.texlab}/bin/texlab";
 
   vscodeSettings = {
     "latex-workshop.view.pdf.viewer" = "tab";
@@ -40,6 +41,24 @@ let
       }
     ];
   };
+
+  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
+  zedSettings = {
+    "languages" = {
+      "Latex" = {
+        "format_on_save" = "on";
+        "language_servers" = [ "texlab" ];
+      };
+    };
+    "lsp" = {
+      "texlab" = {
+        "binary" = {
+          "path" = "__PROJECT_DIR__/.zed/lsp/texlab";
+        };
+      };
+    };
+  };
+  zedFragmentJson = builtins.toJSON zedSettings;
 in
 pkgs.mkShell {
   buildInputs = [
@@ -56,18 +75,12 @@ pkgs.mkShell {
       echo '${builtins.toJSON vscodeSettings}' > .vscode/settings.json
     fi
 
-    # Setup Zed LSP wrapper for texlab (NixOS compatible)
+    # Setup Zed LSP wrapper for texlab using direct nix store path (no direnv needed)
     mkdir -p .zed/lsp
-    cat > .zed/lsp/texlab << 'TEXLAB_WRAPPER'
+    cat > .zed/lsp/texlab << TEXLAB_WRAPPER
 #!/usr/bin/env bash
-# Reusable texlab wrapper for Zed on NixOS
-# Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-
-# Use direnv to run texlab with the correct environment
-exec direnv exec "$PROJECT_DIR" texlab "$@" 2>/dev/null
+# texlab LSP wrapper - direct nix store path
+exec "${texlabPath}" "\$@"
 TEXLAB_WRAPPER
     chmod +x .zed/lsp/texlab
 
@@ -118,24 +131,6 @@ TEXLAB_WRAPPER
       echo "⚠️  Node not available. Using LaTeX Zed settings only."
     fi
   '';
-
-  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
-  zedSettings = {
-    "languages" = {
-      "Latex" = {
-        "format_on_save" = "on";
-        "language_servers" = ["texlab"];
-      };
-    };
-    "lsp" = {
-      "texlab" = {
-        "binary" = {
-          "path" = "__PROJECT_DIR__/.zed/lsp/texlab";
-        };
-      };
-    };
-  };
-  zedFragmentJson = builtins.toJSON zedSettings;
 
   passthru = {
     inherit vscodeSettings zedSettings;
