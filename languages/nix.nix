@@ -15,23 +15,27 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings (binary path resolved from direnv-provided PATH)
-  # zedSettings = {
-  #   "lsp" = {
-  #     "nixd" = {};
-  #   };
-  #   # Disable Nix extension LSP management and force explicit binaries
-  #   "languages" = {
-  #     "Nix" = {
-  #       "language_servers" = [ "nixd" "!nil" ];
-  #       "formatter" = {
-  #         "external" = {
-  #           "command" = "nixfmt";
-  #         };
-  #       };
-  #     };
-  #   };
-  # };
+  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
+  zedSettings = {
+    "languages" = {
+      "Nix" = {
+        "language_servers" = [ "nixd" "!nil" ];
+        "formatter" = {
+          "external" = {
+            "command" = "nixfmt";
+          };
+        };
+      };
+    };
+    "lsp" = {
+      "nixd" = {
+        "binary" = {
+          "path" = ".zed/lsp/nixd";
+        };
+      };
+    };
+  };
+  zedFragmentJson = builtins.toJSON zedSettings;
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
@@ -48,11 +52,10 @@ pkgs.mkShell {
     # 1. Create the local bin folder
     mkdir -p .bin
 
-    # 2. Create a symlink named EXACTLY 'nixfmt' (what the extension wants)
-    # We use 'nixfmt' as the source
+    # Create symlink for nixfmt
     ln -sf "$(type -p nixfmt)" .bin/nixfmt
 
-    # 3. FORCE this folder into the PATH of this shell session
+    # Add .bin to PATH
     export PATH="$PWD/.bin:$PATH"
 
     # Auto-generate VS Code settings
@@ -62,9 +65,70 @@ pkgs.mkShell {
     fi
     echo "📝 VS Code settings synchronized."
 
+    # Setup Zed LSP wrapper for nixd (NixOS compatible)
+    mkdir -p .zed/lsp
+    cat > .zed/lsp/nixd << 'NIXD_WRAPPER'
+#!/usr/bin/env bash
+# Reusable nixd wrapper for Zed on NixOS
+# Finds the nearest .envrc and uses direnv to run nixd
+set -euo pipefail
+dir="$PWD"
+while [[ "$dir" != "/" ]]; do
+  if [[ -f "$dir/.envrc" ]]; then
+    exec direnv exec "$dir" nixd "$@"
+  fi
+  dir="$(dirname "$dir")"
+done
+exec nixd "$@"
+NIXD_WRAPPER
+    chmod +x .zed/lsp/nixd
+
+    # Write Zed settings fragment for merging
+    mkdir -p .zed/lsp-config
+    echo '${zedFragmentJson}' > .zed/lsp-config/nix.json
+
+    # Merge all Zed settings fragments into .zed/settings.json
+    if command -v node &>/dev/null; then
+      node -e "
+        const fs = require('fs');
+        const path = require('path');
+        const configDir = '.zed/lsp-config';
+        const fragments = [];
+        if (fs.existsSync(configDir)) {
+          fs.readdirSync(configDir).forEach(f => {
+            if (f.endsWith('.json')) {
+              try {
+                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
+              } catch (e) {
+                console.error('Failed to parse fragment:', f, e.message);
+              }
+            }
+          });
+        }
+        function deepMerge(target, source) {
+          const output = Object.assign({}, target);
+          if (typeof target === 'object' && typeof source === 'object') {
+            Object.keys(source).forEach(key => {
+              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+                output[key] = deepMerge(target[key] || {}, source[key]);
+              } else {
+                output[key] = source[key];
+              }
+            });
+          }
+          return output;
+        }
+        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
+        fs.writeFileSync('.zed/settings.json', JSON.stringify(merged, null, 2) + '\n');
+        console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
+      "
+    else
+      echo '${zedFragmentJson}' > .zed/settings.json
+      echo "⚠️  Node not available. Using Nix Zed settings only."
+    fi
+
   '';
   passthru = {
-    # zedSettings
-    inherit vscodeSettings;
+    inherit vscodeSettings zedSettings;
   };
 }

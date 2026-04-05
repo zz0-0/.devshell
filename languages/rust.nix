@@ -2,7 +2,7 @@
 { extraPackages ? [] }:
 
 let
-  # VS Code settings to ensure it uses the tools from the Nix shell
+  # VS Code settings
   vscodeSettings = {
     "rust-analyzer.server.path" = "rust-analyzer";
     "rust-analyzer.cargo.buildScripts.enable" = true;
@@ -12,12 +12,33 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings (binary path resolved from direnv-provided PATH)
+  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
   zedSettings = {
+    "languages" = {
+      "Rust" = {
+        "format_on_save" = "on";
+        "language_servers" = ["rust-analyzer"];
+      };
+    };
     "lsp" = {
-      "rust-analyzer" = {};
+      "rust-analyzer" = {
+        "binary" = {
+          "path" = ".zed/lsp/rust-analyzer";
+        };
+        "initialization_options" = {
+          "cargo" = {
+            "buildScripts" = {
+              "enable" = true;
+            };
+          };
+          "procMacro" = {
+            "enable" = true;
+          };
+        };
+      };
     };
   };
+  zedFragmentJson = builtins.toJSON zedSettings;
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
@@ -31,7 +52,6 @@ pkgs.mkShell {
     lldb
   ] ++ extraPackages;
 
-  # Environment variables for compilation
   shellHook = ''
     echo "🦀 Rust dev environment loaded"
 
@@ -72,6 +92,50 @@ done
 exec rust-analyzer "$@"
 RUST_ANALYZER_WRAPPER
     chmod +x .zed/lsp/rust-analyzer
+
+    # Write Zed settings fragment for merging
+    mkdir -p .zed/lsp-config
+    echo '${zedFragmentJson}' > .zed/lsp-config/rust.json
+
+    # Merge all Zed settings fragments into .zed/settings.json
+    if command -v node &>/dev/null; then
+      node -e "
+        const fs = require('fs');
+        const path = require('path');
+        const configDir = '.zed/lsp-config';
+        const fragments = [];
+        if (fs.existsSync(configDir)) {
+          fs.readdirSync(configDir).forEach(f => {
+            if (f.endsWith('.json')) {
+              try {
+                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
+              } catch (e) {
+                console.error('Failed to parse fragment:', f, e.message);
+              }
+            }
+          });
+        }
+        function deepMerge(target, source) {
+          const output = Object.assign({}, target);
+          if (typeof target === 'object' && typeof source === 'object') {
+            Object.keys(source).forEach(key => {
+              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+                output[key] = deepMerge(target[key] || {}, source[key]);
+              } else {
+                output[key] = source[key];
+              }
+            });
+          }
+          return output;
+        }
+        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
+        fs.writeFileSync('.zed/settings.json', JSON.stringify(merged, null, 2) + '\n');
+        console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
+      "
+    else
+      echo '${zedFragmentJson}' > .zed/settings.json
+      echo "⚠️  Node not available. Using Rust Zed settings only."
+    fi
 
     rust_dep_hash=""
     if [ -f "Cargo.toml" ] || [ -f "Cargo.lock" ]; then
