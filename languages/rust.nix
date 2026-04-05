@@ -44,6 +44,34 @@ pkgs.mkShell {
       echo '${settingsJson}' > .vscode/settings.json
     fi
 
+    # Setup Zed LSP wrapper for rust-analyzer (NixOS compatible)
+    mkdir -p .zed/lsp
+    cat > .zed/lsp/rust-analyzer << 'RUST_ANALYZER_WRAPPER'
+#!/usr/bin/env bash
+# Reusable rust-analyzer wrapper for Zed on NixOS
+# Finds the nearest .envrc and uses direnv to run the correct rust-analyzer binary
+set -euo pipefail
+dir="$PWD"
+while [[ "$dir" != "/" ]]; do
+  if [[ -f "$dir/.envrc" ]]; then
+    exec direnv exec "$dir" bash -c '
+      for d in $(echo "$PATH" | tr ":" "\n"); do
+        if [[ "$d" == *rustup* ]]; then
+          continue
+        fi
+        if [[ -f "$d/rust-analyzer" ]] && [[ ! -L "$d/rust-analyzer" || "$(readlink -f "$d/rust-analyzer")" != *rustup* ]]; then
+          exec "$d/rust-analyzer" "$@"
+        fi
+      done
+      echo "Error: rust-analyzer not found in direnv environment" >&2
+      exit 1
+    ' -- "$@"
+  fi
+  dir="$(dirname "$dir")"
+done
+exec rust-analyzer "$@"
+RUST_ANALYZER_WRAPPER
+    chmod +x .zed/lsp/rust-analyzer
 
     rust_dep_hash=""
     if [ -f "Cargo.toml" ] || [ -f "Cargo.lock" ]; then

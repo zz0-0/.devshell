@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Reusable rust-analyzer wrapper for Zed on NixOS
+# Finds the nearest .envrc and uses direnv to run the correct rust-analyzer binary
+# This avoids issues with rustup shadowing the real binary and ensures the correct
+# nix environment is loaded.
+
+set -euo pipefail
+
+# Walk up from CWD to find the nearest .envrc
+dir="$PWD"
+while [[ "$dir" != "/" ]]; do
+  if [[ -f "$dir/.envrc" ]]; then
+    # Use direnv to get the correct rust-analyzer path, bypassing rustup shadowing
+    exec direnv exec "$dir" bash -c '
+      for d in $(echo "$PATH" | tr ":" "\n"); do
+        # Skip rustup directories
+        if [[ "$d" == *rustup* ]]; then
+          continue
+        fi
+        # Look for the actual rust-analyzer binary (not a symlink to rustup)
+        if [[ -f "$d/rust-analyzer" ]] && [[ ! -L "$d/rust-analyzer" || "$(readlink -f "$d/rust-analyzer")" != *rustup* ]]; then
+          exec "$d/rust-analyzer" "$@"
+        fi
+      done
+      echo "Error: rust-analyzer not found in direnv environment" >&2
+      exit 1
+    ' -- "$@"
+  fi
+  dir="$(dirname "$dir")"
+done
+
+# Fallback: try to run rust-analyzer from the current PATH
+exec rust-analyzer "$@"
