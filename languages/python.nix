@@ -110,7 +110,7 @@ SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # Use direnv to run pyright with the correct environment
-exec direnv exec "$PROJECT_DIR" pyright-langserver --stdio
+exec direnv exec "$PROJECT_DIR" pyright-langserver --stdio 2>/dev/null
 PYRIGHT_WRAPPER
     chmod +x .zed/lsp/pyright
 

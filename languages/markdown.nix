@@ -55,7 +55,7 @@ SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # Use direnv to run ltex-ls with the correct environment
-exec direnv exec "$PROJECT_DIR" ltex-ls "$@"
+exec direnv exec "$PROJECT_DIR" ltex-ls "$@" 2>/dev/null
 LTEX_WRAPPER
     chmod +x .zed/lsp/ltex-ls
 

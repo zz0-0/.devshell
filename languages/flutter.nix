@@ -169,7 +169,7 @@ SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # Use direnv to run dart analysis server with the correct environment
-exec direnv exec "$PROJECT_DIR" dart "$@"
+exec direnv exec "$PROJECT_DIR" dart "$@" 2>/dev/null
 DART_WRAPPER
     chmod +x .zed/lsp/dart
 
