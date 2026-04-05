@@ -45,7 +45,7 @@ let
   # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
   zedSettings = {
     "languages" = {
-      "Latex" = {
+      "LaTeX" = {
         "format_on_save" = "on";
         "language_servers" = [ "texlab" ];
       };
@@ -54,6 +54,32 @@ let
       "texlab" = {
         "binary" = {
           "path" = "__PROJECT_DIR__/.zed/lsp/texlab";
+        };
+        "initialization_options" = {
+          "texlab" = {
+            "build" = {
+              "args" = [
+                "-synctex=1"
+                "-pdf"
+                "-interaction=nonstopmode"
+                "-outdir=build"
+                "%f"
+              ];
+              "executable" = "latexmk";
+              "forwardSearchAfter" = true;
+              "onSave" = true;
+            };
+            "forwardSearch" = {
+              "args" = [
+                "--synctex-forward"
+                "%l:1:%f"
+                "-x"
+                "zed %%{input}:%%{line}"
+                "%p"
+              ];
+              "executable" = "evince";
+            };
+          };
         };
       };
     };

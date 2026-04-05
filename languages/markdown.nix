@@ -2,6 +2,10 @@
 { extraPackages ? [] }:
 
 let
+  # Get the jre from ltex-ls-plus package
+  ltexPackage = pkgs.ltex-ls-plus;
+  ltexBinPath = "${ltexPackage}/bin";
+
   # VS Code settings for markdown
   vscodeSettings = {
     "[markdown]" = {
@@ -19,6 +23,7 @@ let
     "languages" = {
       "Markdown" = {
         "format_on_save" = "on";
+        "language_servers" = [ "ltex" ];
       };
     };
     "lsp" = {
@@ -34,6 +39,7 @@ in
 pkgs.mkShell {
   buildInputs = with pkgs; [
     ltex-ls-plus
+    pkgs.jre21
   ] ++ extraPackages;
 
   shellHook = ''
@@ -44,18 +50,12 @@ pkgs.mkShell {
       echo '${settingsJson}' > .vscode/settings.json
     fi
 
-    # Setup Zed LSP wrapper for ltex-ls (NixOS compatible)
+    # Setup Zed LSP wrapper for ltex-ls (NixOS compatible - uses system jre)
     mkdir -p .zed/lsp
-    cat > .zed/lsp/ltex-ls << 'LTEX_WRAPPER'
+    cat > .zed/lsp/ltex-ls << LTEX_WRAPPER
 #!/usr/bin/env bash
-# Reusable ltex-ls wrapper for Zed on NixOS
-# Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-
-# Use direnv to run ltex-ls with the correct environment
-exec direnv exec "$PROJECT_DIR" ltex-ls "$@" 2>/dev/null 2>/dev/null
+# ltex-ls wrapper for NixOS - uses system jre instead of bundled JDK
+exec "${ltexBinPath}/ltex-ls" "\$@"
 LTEX_WRAPPER
     chmod +x .zed/lsp/ltex-ls
 
