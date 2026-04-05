@@ -19,7 +19,7 @@ let
   zedSettings = {
     "languages" = {
       "Nix" = {
-        "language_servers" = [ "nixd" "nil" ];
+        "language_servers" = [ "nixd" "!nil" ];
         "formatter" = {
           "external" = {
             "command" = "nixfmt";
@@ -82,9 +82,20 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # Use direnv to run nixd with the correct environment
 # Redirect stderr to /dev/null to suppress shellHook output that interferes with LSP
-exec direnv exec "$PROJECT_DIR" nixd "$@" 2>/dev/null 2>/dev/null
+exec direnv exec "$PROJECT_DIR" nixd "$@" 2>/dev/null
 NIXD_WRAPPER
     chmod +x .zed/lsp/nixd
+
+    # Setup Zed LSP wrapper for nil (NixOS compatible)
+    cat > .zed/lsp/nil << 'NIL_WRAPPER'
+#!/usr/bin/env bash
+# Reusable nil wrapper for Zed on NixOS
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "'${BASH_SOURCE[0]}'")" && pwd)"
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+exec direnv exec "$PROJECT_DIR" nil "$@" 2>/dev/null
+NIL_WRAPPER
+    chmod +x .zed/lsp/nil
 
     # Write Zed settings fragment for merging
     mkdir -p .zed/lsp-config
