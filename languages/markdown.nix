@@ -17,7 +17,7 @@ let
   # Zed LSP settings with direct nix-store paths (merged by combined shell)
   zedSettings = {
     "lsp" = {
-      "ltex-ls" = {
+      "ltex" = {
         "binary" = {
           "path" = "${pkgs.ltex-ls-plus}/bin/ltex-ls";
         };
