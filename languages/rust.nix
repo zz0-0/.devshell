@@ -76,7 +76,8 @@ while [[ "$dir" != "/" ]]; do
   if [[ -f "$dir/.envrc" ]]; then
     exec direnv exec "$dir" bash -c '
       for d in $(echo "$PATH" | tr ":" "\n"); do
-        if [[ "$d" == *rustup* ]]; then
+        # Skip rustup directories and .zed/lsp wrapper directories
+        if [[ "$d" == *rustup* ]] || [[ "$d" == *".zed/lsp"* ]]; then
           continue
         fi
         if [[ -f "$d/rust-analyzer" ]] && [[ ! -L "$d/rust-analyzer" || "$(readlink -f "$d/rust-analyzer")" != *rustup* ]]; then
