@@ -5,6 +5,7 @@ let
   # The settings we want to force in VS Code
   nixfmtPath = "${pkgs.nixfmt}/bin/nixfmt";
   nilPath = "${pkgs.nil}/bin/nil";
+  nixdPath = "${pkgs.nixd}/bin/nixd";
   vscodeSettings = {
     "nix.enableLanguageServer" = true;
     "nix.serverPath" = nilPath;
@@ -70,30 +71,20 @@ pkgs.mkShell {
     fi
     echo "📝 VS Code settings synchronized."
 
-    # Setup Zed LSP wrapper for nixd (NixOS compatible)
+    # Setup Zed LSP wrappers using direct nix store paths (no direnv needed)
     mkdir -p .zed/lsp
-    cat > .zed/lsp/nixd << 'NIXD_WRAPPER'
-#!/usr/bin/env bash
-# Reusable nixd wrapper for Zed on NixOS
-# Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# Use direnv to run nixd with the correct environment
-# Redirect stderr to /dev/null to suppress shellHook output that interferes with LSP
-exec direnv exec "$PROJECT_DIR" nixd "$@" 2>/dev/null 2>/dev/null
+    cat > .zed/lsp/nixd << NIXD_WRAPPER
+#!/usr/bin/env bash
+# nixd LSP wrapper - direct nix store path
+exec "${nixdPath}" "\$@"
 NIXD_WRAPPER
     chmod +x .zed/lsp/nixd
 
-    # Setup Zed LSP wrapper for nil (NixOS compatible)
-    cat > .zed/lsp/nil << 'NIL_WRAPPER'
+    cat > .zed/lsp/nil << NIL_WRAPPER
 #!/usr/bin/env bash
-# Reusable nil wrapper for Zed on NixOS
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-exec direnv exec "$PROJECT_DIR" nil "$@" 2>/dev/null
+# nil LSP wrapper - direct nix store path
+exec "${nilPath}" "\$@"
 NIL_WRAPPER
     chmod +x .zed/lsp/nil
 

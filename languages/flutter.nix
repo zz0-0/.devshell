@@ -48,11 +48,15 @@ let
   };
   zedFragmentJson = builtins.toJSON zedSettings;
 
+  # Direct nix store paths for the LSP wrapper (no direnv, no symlinks needed)
+  dartBin = "${pkgs.flutter}/bin/dart";
+  flutterBin = "${pkgs.flutter}/bin/flutter";
+  flutterRoot = pkgs.flutter;
+
 in pkgs.mkShell {
   ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
 
   buildInputs = with pkgs; [
-    dart
     flutter
     androidSdk
     jdk17
@@ -159,17 +163,13 @@ in pkgs.mkShell {
     fi
 
     # Setup Zed LSP wrapper for dart (NixOS compatible)
+    # Uses direct nix store path - no direnv or symlinks needed
     mkdir -p .zed/lsp
-    cat > .zed/lsp/dart << 'DART_WRAPPER'
+    cat > .zed/lsp/dart << DART_WRAPPER
 #!/usr/bin/env bash
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-
-export FLUTTER_ROOT="$PROJECT_DIR/.flutter-sdk"
-export PATH="$FLUTTER_ROOT/bin:$FLUTTER_ROOT/bin/cache/dart-sdk/bin:$PATH"
-
-exec "$FLUTTER_ROOT/bin/dart" language-server "$@"
+# Dart LSP wrapper - uses direct nix store path
+export FLUTTER_ROOT="${flutterRoot}"
+exec "${dartBin}" language-server "\$@"
 DART_WRAPPER
     chmod +x .zed/lsp/dart
 
