@@ -162,17 +162,14 @@ in pkgs.mkShell {
     mkdir -p .zed/lsp
     cat > .zed/lsp/dart << 'DART_WRAPPER'
 #!/usr/bin/env bash
-# Reusable dart wrapper for Zed on NixOS
-# Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# Use Flutter SDK's dart binary directly to ensure LSP matches Flutter version
-DART_BIN="$PROJECT_DIR/.flutter-sdk/bin/dart"
+export FLUTTER_ROOT="$PROJECT_DIR/.flutter-sdk"
+export PATH="$FLUTTER_ROOT/bin:$FLUTTER_ROOT/bin/cache/dart-sdk/bin:$PATH"
 
-# Run dart language server with the correct environment
-exec direnv exec "$PROJECT_DIR" "$DART_BIN" "$@" 2>/dev/null
+exec "$FLUTTER_ROOT/bin/dart" language-server "$@"
 DART_WRAPPER
     chmod +x .zed/lsp/dart
 
