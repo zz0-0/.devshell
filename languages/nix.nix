@@ -30,7 +30,7 @@ let
     "lsp" = {
       "nixd" = {
         "binary" = {
-          "path" = ".zed/lsp/nixd";
+          "path" = "\${PWD}/.zed/lsp/nixd";
         };
       };
     };

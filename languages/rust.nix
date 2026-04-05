@@ -23,7 +23,7 @@ let
     "lsp" = {
       "rust-analyzer" = {
         "binary" = {
-          "path" = ".zed/lsp/rust-analyzer";
+          "path" = "\${PWD}/.zed/lsp/rust-analyzer";
         };
         "initialization_options" = {
           "cargo" = {

@@ -24,7 +24,7 @@ let
     "lsp" = {
       "ltex" = {
         "binary" = {
-          "path" = ".zed/lsp/ltex-ls";
+          "path" = "\${PWD}/.zed/lsp/ltex-ls";
         };
       };
     };
