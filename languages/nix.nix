@@ -18,11 +18,6 @@ let
   # Zed LSP settings with direct nix-store paths (merged by combined shell)
   zedSettings = {
     "lsp" = {
-      "nil" = {
-        "binary" = {
-          "path" = "${pkgs.nil}/bin/nil";
-        };
-      };
       "nixd" = {
         "binary" = {
           "path" = "${pkgs.nixd}/bin/nixd";
@@ -32,14 +27,13 @@ let
     # Disable Nix extension LSP management and force explicit binaries
     "languages" = {
       "Nix" = {
-        "language_servers" = [ "nix" "nixd" ];
+        "language_servers": [ "nixd", "!nil" ]
       };
     };
   };
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    nil
     nixd
     statix
     nixfmt
