@@ -32,7 +32,7 @@ let
     # Disable Nix extension LSP management and force explicit binaries
     "languages" = {
       "Nix" = {
-        "language_servers": [ "nixd", "!nil" ];
+        "language_servers" = [ "nixd" "!nil" ];
         "formatter" = {
           "external" = {
             "command" = "nixfmt";
