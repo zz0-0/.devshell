@@ -67,14 +67,15 @@ pkgs.mkShell {
     # Setup Zed LSP wrapper for rust-analyzer (NixOS compatible)
     mkdir -p .zed/lsp
     cat > .zed/lsp/rust-analyzer << 'RUST_ANALYZER_WRAPPER'
-#!/usr/bin/env bash
-# Reusable rust-analyzer wrapper for Zed on NixOS
-# Finds the nearest .envrc and uses direnv to run the correct rust-analyzer binary
-set -euo pipefail
-dir="$PWD"
-while [[ "$dir" != "/" ]]; do
-  if [[ -f "$dir/.envrc" ]]; then
-    exec direnv exec "$dir" bash -c '
+    #!/usr/bin/env bash
+    # Reusable rust-analyzer wrapper for Zed on NixOS
+    # Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
+    set -euo pipefail
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+    # Use direnv to get the correct rust-analyzer binary, bypassing rustup shadowing
+    exec direnv exec "$PROJECT_DIR" bash -c '
       for d in $(echo "$PATH" | tr ":" "\n"); do
         # Skip rustup directories and .zed/lsp wrapper directories
         if [[ "$d" == *rustup* ]] || [[ "$d" == *".zed/lsp"* ]]; then
@@ -87,11 +88,7 @@ while [[ "$dir" != "/" ]]; do
       echo "Error: rust-analyzer not found in direnv environment" >&2
       exit 1
     ' -- "$@"
-  fi
-  dir="$(dirname "$dir")"
-done
-exec rust-analyzer "$@"
-RUST_ANALYZER_WRAPPER
+    RUST_ANALYZER_WRAPPER
     chmod +x .zed/lsp/rust-analyzer
 
     # Write Zed settings fragment for merging
