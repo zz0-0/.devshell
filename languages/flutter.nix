@@ -26,12 +26,27 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings (binary path resolved from direnv-provided PATH)
+  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
   zedSettings = {
+    "languages" = {
+      "Dart" = {
+        "format_on_save" = "on";
+        "language_servers" = ["dart"];
+      };
+    };
     "lsp" = {
-      "dart" = {};
+      "dart" = {
+        "binary" = {
+          "path" = "__PROJECT_DIR__/.zed/lsp/dart";
+        };
+        "initialization_options" = {
+          "onlyAnalyzeProjectsWithOpenFiles" = false;
+          "suggestFromUnimportedLibraries" = true;
+        };
+      };
     };
   };
+  zedFragmentJson = builtins.toJSON zedSettings;
 
 in pkgs.mkShell {
   ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
@@ -141,6 +156,68 @@ in pkgs.mkShell {
 
     if [ -n "$PS1" ]; then
       echo "Flutter environment ready (${if withEmulator then "emulator" else "standard"})"
+    fi
+
+    # Setup Zed LSP wrapper for dart (NixOS compatible)
+    mkdir -p .zed/lsp
+    cat > .zed/lsp/dart << 'DART_WRAPPER'
+#!/usr/bin/env bash
+# Reusable dart wrapper for Zed on NixOS
+# Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+# Use direnv to run dart analysis server with the correct environment
+exec direnv exec "$PROJECT_DIR" dart "$@"
+DART_WRAPPER
+    chmod +x .zed/lsp/dart
+
+    # Write Zed settings fragment for merging
+    mkdir -p .zed/lsp-config
+    echo '${zedFragmentJson}' > .zed/lsp-config/flutter.json
+
+    # Merge all Zed settings fragments into .zed/settings.json
+    if command -v node &>/dev/null; then
+      node -e "
+        const fs = require('fs');
+        const path = require('path');
+        const configDir = '.zed/lsp-config';
+        const fragments = [];
+        if (fs.existsSync(configDir)) {
+          fs.readdirSync(configDir).forEach(f => {
+            if (f.endsWith('.json')) {
+              try {
+                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
+              } catch (e) {
+                console.error('Failed to parse fragment:', f, e.message);
+              }
+            }
+          });
+        }
+        function deepMerge(target, source) {
+          const output = Object.assign({}, target);
+          if (typeof target === 'object' && typeof source === 'object') {
+            Object.keys(source).forEach(key => {
+              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+                output[key] = deepMerge(target[key] || {}, source[key]);
+              } else {
+                output[key] = source[key];
+              }
+            });
+          }
+          return output;
+        }
+        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
+        // Replace __PROJECT_DIR__ placeholder with actual project directory
+        const projectDir = process.env.PWD || process.cwd();
+        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
+        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
+        console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
+      "
+    else
+      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
+      echo "⚠️  Node not available. Using Flutter Zed settings only."
     fi
   '';
   passthru = {

@@ -19,7 +19,7 @@ let
   zedSettings = {
     "languages" = {
       "Nix" = {
-        "language_servers" = [ "nixd" "!nil" ];
+        "language_servers" = [ "nixd" "nil" ];
         "formatter" = {
           "external" = {
             "command" = "nixfmt";
@@ -31,6 +31,11 @@ let
       "nixd" = {
         "binary" = {
           "path" = "__PROJECT_DIR__/.zed/lsp/nixd";
+        };
+      };
+      "nil" = {
+        "binary" = {
+          "path" = "__PROJECT_DIR__/.zed/lsp/nil";
         };
       };
     };
