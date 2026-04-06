@@ -50,6 +50,9 @@ pkgs.mkShell {
     rustfmt
     clippy
     lldb
+    gcc
+    pkg-config
+    openssl
   ] ++ extraPackages;
 
   shellHook = ''
