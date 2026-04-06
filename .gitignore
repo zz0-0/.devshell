@@ -10,6 +10,7 @@ result-*
 .flutter-sdk
 .dart_tool/
 .venv/
+.qwen/
 
 # Rust build artifacts (if accidentally created in this directory)
 target/
