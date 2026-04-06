@@ -2,9 +2,8 @@
 { extraPackages ? [] }:
 
 let
-  # Get the jre from ltex-ls-plus package
-  ltexPackage = pkgs.ltex-ls-plus;
-  ltexBinPath = "${ltexPackage}/bin";
+  # Direct nix store path for markdown-oxide
+  markdownOxPath = "${pkgs.markdown-oxide}/bin/markdown-oxide";
 
   # VS Code settings for markdown
   vscodeSettings = {
@@ -23,13 +22,13 @@ let
     "languages" = {
       "Markdown" = {
         "format_on_save" = "on";
-        "language_servers" = [ "ltex" ];
+        "language_servers" = [ "markdown-oxide" ];
       };
     };
     "lsp" = {
-      "ltex" = {
+      "markdown-oxide" = {
         "binary" = {
-          "path" = "__PROJECT_DIR__/.zed/lsp/ltex-ls";
+          "path" = "__PROJECT_DIR__/.zed/lsp/markdown-oxide";
           "arguments" = [];
         };
       };
@@ -39,8 +38,7 @@ let
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    ltex-ls-plus
-    jdk21_headless
+    markdown-oxide
   ] ++ extraPackages;
 
   shellHook = ''
@@ -51,15 +49,14 @@ pkgs.mkShell {
       echo '${settingsJson}' > .vscode/settings.json
     fi
 
-    # Setup Zed LSP wrapper for ltex-ls (NixOS compatible - uses jdk21_headless from buildInputs)
+    # Setup Zed LSP wrapper for markdown-oxide (NixOS compatible)
     mkdir -p .zed/lsp
-    cat > .zed/lsp/ltex-ls << LTEX_WRAPPER
+    cat > .zed/lsp/markdown-oxide << MARKDOWN_OX_WRAPPER
 #!/usr/bin/env bash
-# ltex-ls wrapper for NixOS - uses system JDK instead of bundled JDK
-export JAVA_HOME="${pkgs.jdk21_headless}"
-exec "${ltexBinPath}/ltex-ls-plus" "\$@"
-LTEX_WRAPPER
-    chmod +x .zed/lsp/ltex-ls
+# markdown-oxide wrapper - direct nix store path
+exec "${markdownOxPath}" "\$@"
+MARKDOWN_OX_WRAPPER
+    chmod +x .zed/lsp/markdown-oxide
 
     # Write Zed settings fragment for merging
     mkdir -p .zed/lsp-config
