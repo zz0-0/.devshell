@@ -30,6 +30,7 @@ let
       "ltex" = {
         "binary" = {
           "path" = "__PROJECT_DIR__/.zed/lsp/ltex-ls";
+          "arguments" = [];
         };
       };
     };
@@ -39,6 +40,7 @@ in
 pkgs.mkShell {
   buildInputs = with pkgs; [
     ltex-ls-plus
+    jdk21_headless
   ] ++ extraPackages;
 
   shellHook = ''
@@ -49,12 +51,13 @@ pkgs.mkShell {
       echo '${settingsJson}' > .vscode/settings.json
     fi
 
-    # Setup Zed LSP wrapper for ltex-ls (NixOS compatible - uses system jre)
+    # Setup Zed LSP wrapper for ltex-ls (NixOS compatible - uses jdk21_headless from buildInputs)
     mkdir -p .zed/lsp
     cat > .zed/lsp/ltex-ls << LTEX_WRAPPER
 #!/usr/bin/env bash
-# ltex-ls wrapper for NixOS - uses system jre instead of bundled JDK
-exec "${ltexBinPath}/ltex-ls" "\$@"
+# ltex-ls wrapper for NixOS - uses system JDK instead of bundled JDK
+export JAVA_HOME="${pkgs.jdk21_headless}"
+exec "${ltexBinPath}/ltex-ls-plus" "\$@"
 LTEX_WRAPPER
     chmod +x .zed/lsp/ltex-ls
 
