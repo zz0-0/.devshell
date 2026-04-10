@@ -37,15 +37,17 @@
           flutterFn = import ./languages/flutter.nix pkgs;
           nixFn = import ./languages/nix.nix pkgs;
           markdownFn = import ./languages/markdown.nix pkgs;
+          postgresqlFn = import ./languages/postgresql.nix pkgs;
 
         in {
-          # All exports are standalone - combine them explicitly in project flakes
+          # All exports are standalone - combine them in project flakes
           rust = rustFn;
           python = pythonFn;
           flutter = flutterFn;
           latex = latexFn;
           nix = nixFn;
           markdown = markdownFn;
+          postgresql = postgresqlFn;
         });
     };
 }
