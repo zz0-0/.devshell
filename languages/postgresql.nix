@@ -17,7 +17,7 @@ pkgs.mkShell {
     echo "🐘 PostgreSQL dev environment loaded"
 
     export PGDATA="''${PWD}/.postgres/data"
-    export PGHOST="''${PWD}/.postgres"
+    export PGHOST="''${PWD}/.postgres/data"
     export PGPORT="5432"
 
     # Create helper scripts in project-local bin
