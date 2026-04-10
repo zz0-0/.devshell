@@ -39,9 +39,16 @@ if [ ! -d "$PGDATA" ]; then
   initdb --auth=trust --encoding=UTF8 --locale=C
 fi
 
+# Create socket directory (needed on NixOS)
+SOCKET_DIR="/run/postgresql"
+if [ ! -d "$SOCKET_DIR" ]; then
+  mkdir -p "$SOCKET_DIR" 2>/dev/null || true
+  export PGHOST="$PGDATA"  # fallback to local socket
+fi
+
 if [ ! -f "$PGDATA/postmaster.pid" ]; then
   echo "🚀 Starting PostgreSQL on port $PGPORT..."
-  pg_ctl -D "$PGDATA" -l "$PGDATA/logfile" start
+  pg_ctl -D "$PGDATA" -l "$PGDATA/logfile" -o "-k $PGHOST" start
   sleep 2
   echo "✅ PostgreSQL started"
   echo "   Connection: postgresql://$(whoami)@localhost:$PGPORT/$(whoami)"
