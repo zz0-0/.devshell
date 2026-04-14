@@ -20,13 +20,24 @@ let
     "languages" = {
       "Python" = {
         "format_on_save" = "on";
-        "language_servers" = ["pyright"];
+        "language_servers" = ["ruff" "pyright"];
+        "code_actions_on_format" = {
+          "source.organizeImports.ruff" = true;
+        };
+        "formatter" = {
+          "language_server" = { "name" = "ruff"; };
+        };
       };
     };
     "lsp" = {
       "pyright" = {
         "binary" = {
           "path" = "__PROJECT_DIR__/.zed/lsp/pyright";
+        };
+      };
+      "ruff" = {
+        "binary" = {
+          "path" = "__PROJECT_DIR__/.zed/lsp/ruff";
         };
       };
     };
@@ -39,15 +50,11 @@ pkgs.mkShell {
 
     # Standard tools
     pkgs.poetry
-    pkgs.pyright
 
     # Python-specific tools from the package set
-    pythonPkgs.black
-    pythonPkgs.isort
-    pythonPkgs.flake8
-    pythonPkgs.mypy
-    pythonPkgs.pip
     pythonPkgs.ruff
+    pythonPkgs.pyright
+    pythonPkgs.pip
   ] ++ extraPackages;
 
   shellHook = ''
@@ -113,6 +120,17 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 exec direnv exec "$PROJECT_DIR" pyright-langserver --stdio 2>/dev/null
 PYRIGHT_WRAPPER
     chmod +x .zed/lsp/pyright
+
+    # Setup Zed LSP wrapper for ruff (NixOS compatible)
+    cat > .zed/lsp/ruff << 'RUFF_WRAPPER'
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+exec direnv exec "$PROJECT_DIR" ruff server -- 2>/dev/null
+RUFF_WRAPPER
+    chmod +x .zed/lsp/ruff
 
     # Write Zed settings fragment for merging
     mkdir -p .zed/lsp-config
