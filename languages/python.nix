@@ -53,8 +53,8 @@ pkgs.mkShell {
 
     # Python-specific tools from the package set
     pythonPkgs.ruff
-    pythonPkgs.pyright
     pythonPkgs.pip
+    pkgs.pyright
   ] ++ extraPackages;
 
   shellHook = ''
