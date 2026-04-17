@@ -62,6 +62,9 @@ pkgs.mkShell {
     fi
     source .venv/bin/activate
     export PIP_DISABLE_PIP_VERSION_CHECK=1
+    if [ -f "pip.conf" ]; then
+      export PIP_CONFIG_FILE="$PWD/pip.conf"
+    fi
 
     echo "🐍 Python venv is active at ./.venv"
 
