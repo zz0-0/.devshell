@@ -1,11 +1,11 @@
 
 { pkgs, ... }:
-{ extraPackages ? [] }:
+{ extraPackages ? [], python ? pkgs.python3 }:
 
 let
   # Define the python suite once to ensure consistency
-  pythonEnv = pkgs.python3;
-  pythonPkgs = pkgs.python3Packages;
+  pythonEnv = python;
+  pythonPkgs = pythonEnv.pkgs;
   vscodeSettings = {
     "python.defaultInterpreterPath" = "\${workspaceFolder}/.venv/bin/python";
     "python.terminal.activateEnvInSelectedTerminal" = true;
