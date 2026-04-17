@@ -1,10 +1,10 @@
 { pkgs, ... }:
-{ extraPackages ? [], python ? pkgs.python3 }:
+{ extraPackages ? [ ], python ? pkgs.python3 }:
 
 let
-  # Use the specified python version or default
+  # Use bare python interpreter - pip bootstrapped via ensurepip in shellHook
   pythonEnv = python;
-  pythonPkgs = pythonEnv.pkgs;
+  pythonPkgs = python.pkgs;
 
   vscodeSettings = {
     "python.defaultInterpreterPath" = "\${workspaceFolder}/.venv/bin/python";
@@ -47,7 +47,6 @@ pkgs.mkShell {
   buildInputs = [
     pythonEnv
     pythonPkgs.ruff
-    pythonPkgs.pip
     pkgs.pyright
   ] ++ extraPackages;
 
@@ -62,10 +61,10 @@ pkgs.mkShell {
     fi
     source .venv/bin/activate
     export PIP_DISABLE_PIP_VERSION_CHECK=1
-    export POETRY_VIRTUALENVS_CREATE=false
 
     echo "🐍 Python venv is active at ./.venv"
 
+    # Auto-install from project dependency files
     dep_hash=""
     if [ -f "pyproject.toml" ] || [ -f "poetry.lock" ] || [ -f "requirements.txt" ]; then
       dep_hash=$(cat pyproject.toml poetry.lock requirements.txt 2>/dev/null | sha256sum | cut -d' ' -f1)
@@ -80,17 +79,17 @@ pkgs.mkShell {
     if [ -n "$dep_hash" ] && [ "$dep_hash" != "$previous_dep_hash" ]; then
       if [ -f "pyproject.toml" ] && [ -f "poetry.lock" ]; then
         echo "📦 Poetry detected. Syncing dependencies..."
-        if poetry install; then
+        if pip install poetry && poetry install; then
           echo "$dep_hash" > "$dep_stamp_file"
         fi
       elif [ -f "pyproject.toml" ]; then
         echo "📦 pyproject.toml detected. Installing with pip..."
-        if .venv/bin/pip install .; then
+        if pip install -e .; then
           echo "$dep_hash" > "$dep_stamp_file"
         fi
       elif [ -f "requirements.txt" ]; then
         echo "📄 requirements.txt detected. Installing..."
-        if .venv/bin/pip install -r requirements.txt; then
+        if pip install -r requirements.txt; then
           echo "$dep_hash" > "$dep_stamp_file"
         fi
       fi
@@ -100,7 +99,7 @@ pkgs.mkShell {
       echo "ℹ️ No dependency file found. Skipping auto-install."
     fi
 
-    # Setup Zed LSP wrappers
+    # Zed LSP wrappers
     mkdir -p .zed/lsp
     cat > .zed/lsp/pyright << 'PYRIGHT_WRAPPER'
 #!/usr/bin/env bash
@@ -120,7 +119,6 @@ exec direnv exec "$PROJECT_DIR" ruff server -- 2>/dev/null
 RUFF_WRAPPER
     chmod +x .zed/lsp/ruff
 
-    # Write and merge Zed settings
     mkdir -p .zed/lsp-config
     echo '${zedFragmentJson}' > .zed/lsp-config/python.json
 
