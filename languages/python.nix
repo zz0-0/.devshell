@@ -19,7 +19,7 @@ let
     "languages" = {
       "Python" = {
         "format_on_save" = "on";
-        "language_servers" = ["ruff" "pyright"];
+        "language_servers" = ["ruff" "basedpyright"];
         "code_actions_on_format" = {
           "source.organizeImports.ruff" = true;
         };
@@ -29,9 +29,9 @@ let
       };
     };
     "lsp" = {
-      "pyright" = {
+      "basedpyright" = {
         "binary" = {
-          "path" = "__PROJECT_DIR__/.zed/lsp/pyright";
+          "path" = "__PROJECT_DIR__/.zed/lsp/basedpyright";
         };
       };
       "ruff" = {
@@ -47,7 +47,7 @@ pkgs.mkShell {
   buildInputs = [
     pythonEnv
     pythonPkgs.ruff
-    pkgs.pyright
+    pkgs.basedpyright
   ] ++ extraPackages;
 
   shellHook = ''
@@ -103,23 +103,17 @@ pkgs.mkShell {
       echo "ℹ️ No dependency file found. Skipping auto-install."
     fi
 
-    # Zed LSP wrappers
+    # Zed LSP wrappers (direct paths, no direnv needed)
     mkdir -p .zed/lsp
-    cat > .zed/lsp/pyright << 'PYRIGHT_WRAPPER'
+    cat > .zed/lsp/basedpyright << 'BASEDPYRIGHT_WRAPPER'
 #!/usr/bin/env bash
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-exec direnv exec "$PROJECT_DIR" pyright-langserver --stdio 2>/dev/null
-PYRIGHT_WRAPPER
-    chmod +x .zed/lsp/pyright
+exec basedpyright-langserver --stdio "$@"
+BASEDPYRIGHT_WRAPPER
+    chmod +x .zed/lsp/basedpyright
 
     cat > .zed/lsp/ruff << 'RUFF_WRAPPER'
 #!/usr/bin/env bash
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-exec direnv exec "$PROJECT_DIR" ruff server -- 2>/dev/null
+exec ruff server -- "$@"
 RUFF_WRAPPER
     chmod +x .zed/lsp/ruff
 
