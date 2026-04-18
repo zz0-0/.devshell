@@ -46,6 +46,7 @@ in
 pkgs.mkShell {
   buildInputs = [
     pythonEnv
+    pythonPkgs.pip
     pythonPkgs.ruff
     pkgs.basedpyright
   ] ++ extraPackages;
@@ -58,7 +59,6 @@ pkgs.mkShell {
 
     if [ ! -d ".venv" ]; then
       python -m venv .venv
-      python -m ensurepip
     fi
     source .venv/bin/activate
     export PIP_DISABLE_PIP_VERSION_CHECK=1
