@@ -9,6 +9,15 @@
 .zed/
 .zed-*
 
+# Devshell version stamp
+.devshell.stamp
+
+# Local binaries created by devshell
+.bin/
+
+# Qwen/AI assistant files
+.qwen/
+
 # Python virtual environment
 .venv/
 .venv25*/
