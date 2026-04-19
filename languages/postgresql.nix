@@ -1,19 +1,19 @@
-{ pkgs, ... }:
+{ pkgs, devshellVersion ? "", ... }:
 { extraPackages ? [] }:
 
-let
-  # Create helper scripts directory
-  pg-helpers = pkgs.writeScriptBin "pg-helpers" ''
-    # This package provides: start_pg, stop_pg, reset_pg
-    # Scripts are installed via shellHook
-  '';
-in
 pkgs.mkShell {
   buildInputs = with pkgs; [
     postgresql
   ] ++ extraPackages;
 
   shellHook = ''
+    # Auto-regenerate config files when devshell version changes
+    devshell_stamp=".devshell.stamp"
+    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
+      rm -rf .vscode .zed .postgres .nix 2>/dev/null
+      echo "${devshellVersion}" > "$devshell_stamp"
+    fi
+
     echo "🐘 PostgreSQL dev environment loaded"
 
     export PGDATA="''${PWD}/.postgres/data"

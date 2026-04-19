@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, devshellVersion ? "", ... }:
 { extraPackages ? [ ], python ? pkgs.python3 }:
 
 let
@@ -52,6 +52,13 @@ pkgs.mkShell {
   ] ++ extraPackages;
 
   shellHook = ''
+    # Auto-regenerate config files when devshell version changes
+    devshell_stamp=".devshell.stamp"
+    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
+      rm -rf .vscode .zed .venv .bin 2>/dev/null
+      echo "${devshellVersion}" > "$devshell_stamp"
+    fi
+
     mkdir -p .vscode
     if [ ! -f ".vscode/settings.json" ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
       echo '${settingsJson}' > .vscode/settings.json

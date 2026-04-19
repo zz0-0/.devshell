@@ -1,5 +1,4 @@
-{ pkgs, ... }:
-{ extraPackages ? [] }:
+{ pkgs, devshellVersion ? "", extraPackages ? [] }:
 
 let
   texEnv = pkgs.texlive.combine {
@@ -95,6 +94,13 @@ pkgs.mkShell {
   ] ++ extraPackages;
 
   shellHook = ''
+    # Auto-regenerate config files when devshell version changes
+    devshell_stamp=".devshell.stamp"
+    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
+      rm -rf .vscode .zed 2>/dev/null
+      echo "${devshellVersion}" > "$devshell_stamp"
+    fi
+
     echo "📄 LaTeX environment initialized"
     mkdir -p .vscode
     if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${builtins.toJSON vscodeSettings}' ]; then

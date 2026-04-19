@@ -1,4 +1,5 @@
-{ pkgs, ... }:
+{ pkgs, devshellVersion ? "", ... }:
+
 { extraPackages ? [] }:
 
 let
@@ -10,7 +11,6 @@ let
     "nix.enableLanguageServer" = true;
     "nix.serverPath" = nilPath;
     "nix.formatterPath" = nixfmtPath;
-    # "nix.serverSettings.nixd.formatting.command" = [ nixfmtPath ];
     "editor.formatOnSave" = true;
     "editor.defaultFormatter" = "jnoortheen.nix-ide";
   };
@@ -53,6 +53,13 @@ pkgs.mkShell {
   ] ++ extraPackages;
 
   shellHook = ''
+    # Auto-regenerate config files when devshell version changes
+    devshell_stamp=".devshell.stamp"
+    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
+      rm -rf .vscode .zed .bin 2>/dev/null
+      echo "${devshellVersion}" > "$devshell_stamp"
+    fi
+
     echo "❄️ Nix dev environment loaded"
 
     # 1. Create the local bin folder

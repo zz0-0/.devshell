@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, devshellVersion ? "", ... } @ args:
 { extraPackages ? [], withEmulator ? false }:
 
 let
@@ -85,6 +85,13 @@ in pkgs.mkShell {
   ] ++ extraPackages;
 
   shellHook = ''
+    # Auto-regenerate config files when devshell version changes
+    devshell_stamp=".devshell.stamp"
+    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
+      rm -rf .vscode .zed .flutter-sdk .dart_tool 2>/dev/null
+      echo "${devshellVersion}" > "$devshell_stamp"
+    fi
+
     export TERM=xterm-256color
     ln -sfn "${pkgs.flutter}" .flutter-sdk
 

@@ -1,5 +1,4 @@
-{ pkgs, ... }:
-{ extraPackages ? [] }:
+{ pkgs, devshellVersion ? "", extraPackages ? [] }:
 
 let
   # VS Code settings
@@ -56,6 +55,13 @@ pkgs.mkShell {
   ] ++ extraPackages;
 
   shellHook = ''
+    # Auto-regenerate config files when devshell version changes
+    devshell_stamp=".devshell.stamp"
+    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
+      rm -rf .vscode .zed .bin 2>/dev/null
+      echo "${devshellVersion}" > "$devshell_stamp"
+    fi
+
     echo "🦀 Rust dev environment loaded"
 
     # Ensure pkg-config can find libraries
