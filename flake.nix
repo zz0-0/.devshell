@@ -12,11 +12,9 @@
         "aarch64-linux"
       ];
 
-      # Compute version hash from all language files for auto-regeneration
-      devshellVersion = builtins.hashFile "sha256" (builtins.path {
-        path = ./.;
-        name = "devshell";
-      });
+      # Compute version from flake rev (changes on every commit)
+      # Falls back to lastModified if rev is null (e.g., dirty tree)
+      devshellVersion = if self ? rev && self.rev != null then self.rev else toString self.lastModified;
 
       forAllSystems = f:
         nixpkgs.lib.genAttrs systems (system:
