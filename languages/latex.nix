@@ -1,4 +1,6 @@
-{ pkgs, devshellVersion ? "", extraPackages ? [] }:
+{ pkgs, devshellVersion ? "", ... }:
+
+{ extraPackages ? [] }:
 
 let
   texEnv = pkgs.texlive.combine {

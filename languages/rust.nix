@@ -1,4 +1,6 @@
-{ pkgs, devshellVersion ? "", extraPackages ? [] }:
+{ pkgs, devshellVersion ? "", ... }:
+
+{ extraPackages ? [] }:
 
 let
   # VS Code settings
