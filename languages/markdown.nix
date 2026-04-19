@@ -1,4 +1,6 @@
-{ pkgs, devshellVersion ? "", extraPackages ? [] }:
+{ pkgs, devshellVersion ? "", ... }:
+
+{ extraPackages ? [] }:
 
 let
   # Direct nix store path for markdown-oxide
