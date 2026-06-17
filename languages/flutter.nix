@@ -96,6 +96,39 @@ in pkgs.mkShell {
     export TERM=xterm-256color
     ln -sfn "${pkgs.flutter}" .flutter-sdk
 
+    # NixOS: flutter_tester in the nix store lacks +x permission.
+    # Create a writable SDK mirror with executable engine in /tmp.
+    PATCHED_SDK="/tmp/kenix-flutter-sdk"
+    if [ ! -d "$PATCHED_SDK" ]; then
+      FLUTTER_ORIG="${pkgs.flutter}"
+      mkdir -p "$PATCHED_SDK"
+      for d in "$FLUTTER_ORIG"/*; do
+        name=$(basename "$d")
+        [ "$name" != "bin" ] && ln -sfn "$d" "$PATCHED_SDK/$name"
+      done
+      mkdir "$PATCHED_SDK/bin"
+      for f in "$FLUTTER_ORIG/bin"/*; do
+        name=$(basename "$f")
+        [ "$name" != "cache" ] && ln -sfn "$f" "$PATCHED_SDK/bin/$name"
+      done
+      mkdir "$PATCHED_SDK/bin/cache"
+      for f in "$FLUTTER_ORIG/bin/cache"/*; do
+        name=$(basename "$f")
+        [ "$name" != "artifacts" ] && ln -sfn "$f" "$PATCHED_SDK/bin/cache/$name"
+      done
+      mkdir -p "$PATCHED_SDK/bin/cache/artifacts/engine"
+      for f in "$FLUTTER_ORIG/bin/cache/artifacts/engine"/*; do
+        name=$(basename "$f")
+        [ "$name" != "linux-x64" ] && ln -sfn "$f" "$PATCHED_SDK/bin/cache/artifacts/engine/$name"
+      done
+      mkdir -p "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64"
+      cp "$FLUTTER_ORIG/bin/cache/artifacts/engine/linux-x64/"* \
+        "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/"
+      chmod +x "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/flutter_tester"
+      echo "✅ Flutter engine patched for NixOS (cached at /tmp/kenix-flutter-sdk)"
+    fi
+    export FLUTTER_ROOT="$PATCHED_SDK"
+
     # Set pkg-config paths for Linux desktop development
     export PKG_CONFIG_PATH="${pkgs.sysprof}/lib/pkgconfig:${pkgs.glib.dev}/lib/pkgconfig:${pkgs.gtk3}/lib/pkgconfig:${pkgs.xorg.libX11}/lib/pkgconfig"
 
