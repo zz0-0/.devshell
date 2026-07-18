@@ -25,6 +25,7 @@ Each combined environment includes:
 | **Python** | python3, poetry, pyright, black, ruff, mypy | `devshell.lib.<system>.python` |
 | **Rust** | cargo, rustc, rust-analyzer, rustfmt, clippy | `devshell.lib.<system>.rust` |
 | **Flutter** | flutter, android-sdk, jdk17, gradle, cmake | `devshell.lib.<system>.flutter` |
+| **Java** | jdk25, jdt-language-server, maven, gradle | `devshell.lib.<system>.java` |
 
 ### Standalone Environments
 For advanced use cases where you want more control:

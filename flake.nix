@@ -42,6 +42,7 @@
           nixFn = import ./languages/nix.nix { pkgs = pkgs; devshellVersion = devshellVersion; };
           markdownFn = import ./languages/markdown.nix { pkgs = pkgs; devshellVersion = devshellVersion; };
           postgresqlFn = import ./languages/postgresql.nix { pkgs = pkgs; devshellVersion = devshellVersion; };
+          javaFn = import ./languages/java.nix { pkgs = pkgs; devshellVersion = devshellVersion; };
 
         in {
           # All exports are standalone - combine them in project flakes
@@ -52,6 +53,7 @@
           nix = nixFn;
           markdown = markdownFn;
           postgresql = postgresqlFn;
+          java = javaFn;
         });
     };
 }
