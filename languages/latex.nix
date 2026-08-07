@@ -14,16 +14,16 @@ let
     writeLspWrapper
     ;
 
-  texEnv = pkgs.texlive.combine {
-    inherit (pkgs.texlive)
+  texEnv = pkgs.texlive.withPackages (
+    ps: with ps; [
       scheme-medium
       collection-latexextra
       collection-fontsrecommended
       latexmk
       biblatex
       biber
-      ;
-  };
+    ]
+  );
 
   # Absolute path to the bin directory in the Nix store (VS Code is not
   # direnv-aware, so latex-workshop gets explicit paths)
