@@ -56,7 +56,12 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings fragment
+  # Zed LSP settings fragment.
+  #
+  # Build config goes under `settings` (texlab v5 ignores initialization_options),
+  # with -outdir=build so artifacts land in build/. forwardSearch is intentionally
+  # NOT set: the zed-latex extension detects evince on PATH and injects its own
+  # evince preset (python synctex wrapper) at runtime.
   zedSettings = {
     "languages" = {
       "LaTeX" = {
@@ -69,9 +74,10 @@ let
         "binary" = {
           "path" = "__PROJECT_DIR__/.zed/lsp/texlab";
         };
-        "initialization_options" = {
+        "settings" = {
           "texlab" = {
             "build" = {
+              "executable" = "latexmk";
               "args" = [
                 "-synctex=1"
                 "-pdf"
@@ -79,19 +85,11 @@ let
                 "-outdir=build"
                 "%f"
               ];
-              "executable" = "latexmk";
-              "forwardSearchAfter" = true;
               "onSave" = true;
-            };
-            "forwardSearch" = {
-              "args" = [
-                "--synctex-forward"
-                "%l:1:%f"
-                "-x"
-                "zed %%{input}:%%{line}"
-                "%p"
-              ];
-              "executable" = "evince";
+              "forwardSearchAfter" = true;
+              "auxDirectory" = "build";
+              "logDirectory" = "build";
+              "pdfDirectory" = "build";
             };
           };
         };
@@ -106,6 +104,12 @@ common.mkShell {
     pkgs.texlab
     pkgs.pandoc
     pkgs.ghostscript
+    # PDF preview: the zed-latex extension drives evince through a python
+    # synctex wrapper (dbus + gi), and texlab spawns `python3` for it.
+    pkgs.evince
+    pkgs.python3
+    pkgs.python3Packages.pygobject3
+    pkgs.python3Packages.dbus-python
   ]
   ++ extraPackages;
 
@@ -117,6 +121,11 @@ common.mkShell {
       command = "texlab";
     }}
     ${mergeZedSettings}
+
+    # Let gi (PyGObject) find the GLib typelib and its shared libraries, so the
+    # evince synctex wrapper (spawned by texlab) can import gi/dbus.
+    export GI_TYPELIB_PATH="${pkgs.glib}/lib/girepository-1.0"
+    export LD_LIBRARY_PATH="${pkgs.glib}/lib:${pkgs.libffi}/lib"
 
     echo "📄 LaTeX environment initialized"
   '';

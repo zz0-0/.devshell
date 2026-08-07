@@ -83,6 +83,9 @@ Or without direnv: `nix develop` to enter the shell interactively.
 
 ### LaTeX Environment
 - **VS Code Integration**: latex-workshop configured with absolute store paths
+- **Zed Integration**: texlab build-on-save with `-outdir=build`; PDF preview
+  via evince (the zed-latex extension auto-configures its synctex wrapper;
+  the shell provides python3 + gi/dbus + evince for it)
 - **Build Automation**: latexmk with synctex, `-outdir=build`
 
 ### PostgreSQL Environment
