@@ -1,8 +1,20 @@
-{ pkgs, devshellVersion ? "", ... }:
+{ pkgs, ... }:
 
-{ extraPackages ? [ ], python ? pkgs.python3 }:
+{
+  extraPackages ? [ ],
+  python ? pkgs.python3,
+}:
 
 let
+  common = import ./common.nix { inherit pkgs; };
+  inherit (common)
+    mkShell
+    writeVscodeSettings
+    writeZedFragment
+    mergeZedSettings
+    writeLspWrapper
+    ;
+
   # Use bare python interpreter - pip bootstrapped via ensurepip in shellHook
   pythonEnv = python;
   pythonPkgs = python.pkgs;
@@ -20,12 +32,17 @@ let
     "languages" = {
       "Python" = {
         "format_on_save" = "on";
-        "language_servers" = ["ruff" "basedpyright"];
+        "language_servers" = [
+          "ruff"
+          "basedpyright"
+        ];
         "code_actions_on_format" = {
           "source.organizeImports.ruff" = true;
         };
         "formatter" = {
-          "language_server" = { "name" = "ruff"; };
+          "language_server" = {
+            "name" = "ruff";
+          };
         };
       };
     };
@@ -44,26 +61,28 @@ let
   };
   zedFragmentJson = builtins.toJSON zedSettings;
 in
-pkgs.mkShell {
+common.mkShell {
   buildInputs = [
     pythonEnv
     pythonPkgs.pip
     pythonPkgs.ruff
     pkgs.basedpyright
-  ] ++ extraPackages;
+    pkgs.poetry
+  ]
+  ++ extraPackages;
 
   shellHook = ''
-    # Auto-regenerate config files when devshell version changes
-    devshell_stamp=".devshell.stamp"
-    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
-      rm -rf .vscode .zed .venv .bin 2>/dev/null
-      echo "${devshellVersion}" > "$devshell_stamp"
-    fi
-
-    mkdir -p .vscode
-    if [ ! -f ".vscode/settings.json" ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
-      echo '${settingsJson}' > .vscode/settings.json
-    fi
+    ${writeVscodeSettings settingsJson}
+    ${writeZedFragment "python" zedFragmentJson}
+    ${writeLspWrapper {
+      name = "basedpyright";
+      command = "basedpyright-langserver --stdio";
+    }}
+    ${writeLspWrapper {
+      name = "ruff";
+      command = "ruff server";
+    }}
+    ${mergeZedSettings}
 
     if [ ! -d ".venv" ]; then
       python -m venv .venv
@@ -91,7 +110,7 @@ pkgs.mkShell {
     if [ -n "$dep_hash" ] && [ "$dep_hash" != "$previous_dep_hash" ]; then
       if [ -f "pyproject.toml" ] && [ -f "poetry.lock" ]; then
         echo "📦 Poetry detected. Syncing dependencies..."
-        if pip install poetry && poetry install; then
+        if poetry install; then
           echo "$dep_hash" > "$dep_stamp_file"
         fi
       elif [ -f "pyproject.toml" ]; then
@@ -109,60 +128,6 @@ pkgs.mkShell {
       echo "✅ Python dependencies unchanged. Skipping install."
     else
       echo "ℹ️ No dependency file found. Skipping auto-install."
-    fi
-
-    # Zed LSP wrappers (direct paths, no direnv needed)
-    mkdir -p .zed/lsp
-    cat > .zed/lsp/basedpyright << 'BASEDPYRIGHT_WRAPPER'
-#!/usr/bin/env bash
-exec basedpyright-langserver --stdio "$@"
-BASEDPYRIGHT_WRAPPER
-    chmod +x .zed/lsp/basedpyright
-
-    cat > .zed/lsp/ruff << 'RUFF_WRAPPER'
-#!/usr/bin/env bash
-exec ruff server -- "$@"
-RUFF_WRAPPER
-    chmod +x .zed/lsp/ruff
-
-    mkdir -p .zed/lsp-config
-    echo '${zedFragmentJson}' > .zed/lsp-config/python.json
-
-    if command -v node &>/dev/null; then
-      node -e "
-        const fs = require('fs');
-        const path = require('path');
-        const configDir = '.zed/lsp-config';
-        const fragments = [];
-        if (fs.existsSync(configDir)) {
-          fs.readdirSync(configDir).forEach(f => {
-            if (f.endsWith('.json')) {
-              try {
-                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
-              } catch (e) {}
-            }
-          });
-        }
-        function deepMerge(target, source) {
-          const output = Object.assign({}, target);
-          if (typeof target === 'object' && typeof source === 'object') {
-            Object.keys(source).forEach(key => {
-              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
-                output[key] = deepMerge(target[key] || {}, source[key]);
-              } else {
-                output[key] = source[key];
-              }
-            });
-          }
-          return output;
-        }
-        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
-        const projectDir = process.env.PWD || process.cwd();
-        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
-        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
-      "
-    else
-      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
     fi
   '';
 

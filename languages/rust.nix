@@ -1,8 +1,19 @@
-{ pkgs, devshellVersion ? "", ... }:
+{ pkgs, ... }:
 
-{ extraPackages ? [] }:
+{
+  extraPackages ? [ ],
+}:
 
 let
+  common = import ./common.nix { inherit pkgs; };
+  inherit (common)
+    mkShell
+    writeVscodeSettings
+    writeZedFragment
+    mergeZedSettings
+    writeLspWrapper
+    ;
+
   # VS Code settings
   vscodeSettings = {
     "rust-analyzer.server.path" = "rust-analyzer";
@@ -13,12 +24,12 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
+  # Zed LSP settings fragment
   zedSettings = {
     "languages" = {
       "Rust" = {
         "format_on_save" = "on";
-        "language_servers" = ["rust-analyzer"];
+        "language_servers" = [ "rust-analyzer" ];
       };
     };
     "lsp" = {
@@ -41,113 +52,36 @@ let
   };
   zedFragmentJson = builtins.toJSON zedSettings;
 in
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    # Toolchain
-    cargo
-    rustc
-    rustup
-    rust-analyzer
-    rustfmt
-    clippy
-    lldb
-    gcc
-    pkg-config
-    openssl
-  ] ++ extraPackages;
+common.mkShell {
+  buildInputs =
+    with pkgs;
+    [
+      # Toolchain
+      cargo
+      rustc
+      rust-analyzer
+      rustfmt
+      clippy
+      lldb
+      gcc
+      pkg-config
+      openssl
+    ]
+    ++ extraPackages;
 
   shellHook = ''
-    # Auto-regenerate config files when devshell version changes
-    devshell_stamp=".devshell.stamp"
-    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
-      rm -rf .vscode .zed .bin 2>/dev/null
-      echo "${devshellVersion}" > "$devshell_stamp"
-    fi
+    ${writeVscodeSettings settingsJson}
+    ${writeZedFragment "rust" zedFragmentJson}
+    ${writeLspWrapper {
+      name = "rust-analyzer";
+      command = "rust-analyzer";
+    }}
+    ${mergeZedSettings}
 
     echo "🦀 Rust dev environment loaded"
 
     # Ensure pkg-config can find libraries
     export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig"
-
-    # Setup VS Code
-    mkdir -p .vscode
-    if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
-      echo '${settingsJson}' > .vscode/settings.json
-    fi
-
-    # Setup Zed LSP wrapper for rust-analyzer (NixOS compatible)
-    mkdir -p .zed/lsp
-    tee .zed/lsp/rust-analyzer > /dev/null << 'RUST_ANALYZER_WRAPPER'
-#!/usr/bin/env bash
-# Reusable rust-analyzer wrapper for Zed on NixOS
-# Uses the wrapper's own location to find the project root (two levels up from .zed/lsp/)
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-
-# Use direnv to get the correct rust-analyzer binary, bypassing rustup shadowing
-exec direnv exec "$PROJECT_DIR" bash -c '
-  for d in $(echo "$PATH" | tr ":" "\n"); do
-    # Skip rustup directories and .zed/lsp wrapper directories
-    if [[ "$d" == *rustup* ]] || [[ "$d" == *".zed/lsp"* ]]; then
-      continue
-    fi
-    if [[ -f "$d/rust-analyzer" ]] && [[ ! -L "$d/rust-analyzer" || "$(readlink -f "$d/rust-analyzer")" != *rustup* ]]; then
-      exec "$d/rust-analyzer" "$@"
-    fi
-  done
-  echo "Error: rust-analyzer not found in direnv environment" >&2
-  exit 1
-' -- "$@" 2>/dev/null 2>/dev/null
-RUST_ANALYZER_WRAPPER
-    chmod +x .zed/lsp/rust-analyzer
-
-    # Write Zed settings fragment for merging
-    mkdir -p .zed/lsp-config
-    echo '${zedFragmentJson}' > .zed/lsp-config/rust.json
-
-    # Merge all Zed settings fragments into .zed/settings.json
-    if command -v node &>/dev/null; then
-      node -e "
-        const fs = require('fs');
-        const path = require('path');
-        const configDir = '.zed/lsp-config';
-        const fragments = [];
-        if (fs.existsSync(configDir)) {
-          fs.readdirSync(configDir).forEach(f => {
-            if (f.endsWith('.json')) {
-              try {
-                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
-              } catch (e) {
-                console.error('Failed to parse fragment:', f, e.message);
-              }
-            }
-          });
-        }
-        function deepMerge(target, source) {
-          const output = Object.assign({}, target);
-          if (typeof target === 'object' && typeof source === 'object') {
-            Object.keys(source).forEach(key => {
-              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
-                output[key] = deepMerge(target[key] || {}, source[key]);
-              } else {
-                output[key] = source[key];
-              }
-            });
-          }
-          return output;
-        }
-        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
-        // Replace __PROJECT_DIR__ placeholder with actual project directory
-        const projectDir = process.env.PWD || process.cwd();
-        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
-        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
-        console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
-      "
-    else
-      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
-      echo "⚠️  Node not available. Using Rust Zed settings only."
-    fi
 
     rust_dep_hash=""
     if [ -f "Cargo.toml" ] || [ -f "Cargo.lock" ]; then

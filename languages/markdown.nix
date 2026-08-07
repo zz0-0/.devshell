@@ -1,10 +1,18 @@
-{ pkgs, devshellVersion ? "", ... }:
+{ pkgs, ... }:
 
-{ extraPackages ? [] }:
+{
+  extraPackages ? [ ],
+}:
 
 let
-  # Direct nix store path for markdown-oxide
-  markdownOxPath = "${pkgs.markdown-oxide}/bin/markdown-oxide";
+  common = import ./common.nix { inherit pkgs; };
+  inherit (common)
+    mkShell
+    writeVscodeSettings
+    writeZedFragment
+    mergeZedSettings
+    writeLspWrapper
+    ;
 
   # VS Code settings for markdown
   vscodeSettings = {
@@ -18,7 +26,7 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
+  # Zed LSP settings fragment
   zedSettings = {
     "languages" = {
       "Markdown" = {
@@ -30,88 +38,31 @@ let
       "markdown-oxide" = {
         "binary" = {
           "path" = "__PROJECT_DIR__/.zed/lsp/markdown-oxide";
-          "arguments" = [];
+          "arguments" = [ ];
         };
       };
     };
   };
   zedFragmentJson = builtins.toJSON zedSettings;
 in
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    markdown-oxide
-  ] ++ extraPackages;
+common.mkShell {
+  buildInputs =
+    with pkgs;
+    [
+      markdown-oxide
+    ]
+    ++ extraPackages;
 
   shellHook = ''
-    # Auto-regenerate config files when devshell version changes
-    devshell_stamp=".devshell.stamp"
-    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
-      rm -rf .vscode .zed .bin 2>/dev/null
-      echo "${devshellVersion}" > "$devshell_stamp"
-    fi
+    ${writeVscodeSettings settingsJson}
+    ${writeZedFragment "markdown" zedFragmentJson}
+    ${writeLspWrapper {
+      name = "markdown-oxide";
+      command = "markdown-oxide";
+    }}
+    ${mergeZedSettings}
 
     echo "📝 Markdown environment initialized"
-
-    mkdir -p .vscode
-    if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
-      echo '${settingsJson}' > .vscode/settings.json
-    fi
-
-    # Setup Zed LSP wrapper for markdown-oxide (NixOS compatible)
-    mkdir -p .zed/lsp
-    cat > .zed/lsp/markdown-oxide << MARKDOWN_OX_WRAPPER
-#!/usr/bin/env bash
-# markdown-oxide wrapper - direct nix store path
-exec "${markdownOxPath}" "\$@"
-MARKDOWN_OX_WRAPPER
-    chmod +x .zed/lsp/markdown-oxide
-
-    # Write Zed settings fragment for merging
-    mkdir -p .zed/lsp-config
-    echo '${zedFragmentJson}' > .zed/lsp-config/markdown.json
-
-    # Merge all Zed settings fragments into .zed/settings.json
-    if command -v node &>/dev/null; then
-      node -e "
-        const fs = require('fs');
-        const path = require('path');
-        const configDir = '.zed/lsp-config';
-        const fragments = [];
-        if (fs.existsSync(configDir)) {
-          fs.readdirSync(configDir).forEach(f => {
-            if (f.endsWith('.json')) {
-              try {
-                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
-              } catch (e) {
-                console.error('Failed to parse fragment:', f, e.message);
-              }
-            }
-          });
-        }
-        function deepMerge(target, source) {
-          const output = Object.assign({}, target);
-          if (typeof target === 'object' && typeof source === 'object') {
-            Object.keys(source).forEach(key => {
-              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
-                output[key] = deepMerge(target[key] || {}, source[key]);
-              } else {
-                output[key] = source[key];
-              }
-            });
-          }
-          return output;
-        }
-        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
-        // Replace __PROJECT_DIR__ placeholder with actual project directory
-        const projectDir = process.env.PWD || process.cwd();
-        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
-        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
-        console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
-      "
-    else
-      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
-      echo "⚠️  Node not available. Using Markdown Zed settings only."
-    fi
   '';
 
   passthru = {

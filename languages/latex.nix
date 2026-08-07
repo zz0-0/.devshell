@@ -1,8 +1,19 @@
-{ pkgs, devshellVersion ? "", ... }:
+{ pkgs, ... }:
 
-{ extraPackages ? [] }:
+{
+  extraPackages ? [ ],
+}:
 
 let
+  common = import ./common.nix { inherit pkgs; };
+  inherit (common)
+    mkShell
+    writeVscodeSettings
+    writeZedFragment
+    mergeZedSettings
+    writeLspWrapper
+    ;
+
   texEnv = pkgs.texlive.combine {
     inherit (pkgs.texlive)
       scheme-medium
@@ -10,12 +21,13 @@ let
       collection-fontsrecommended
       latexmk
       biblatex
-      biber;
+      biber
+      ;
   };
 
-  # Calculate the absolute path to the bin directory in the Nix store
+  # Absolute path to the bin directory in the Nix store (VS Code is not
+  # direnv-aware, so latex-workshop gets explicit paths)
   texBinPath = "${texEnv}/bin";
-  texlabPath = "${pkgs.texlab}/bin/texlab";
 
   vscodeSettings = {
     "latex-workshop.view.pdf.viewer" = "tab";
@@ -42,8 +54,9 @@ let
       }
     ];
   };
+  settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
+  # Zed LSP settings fragment
   zedSettings = {
     "languages" = {
       "LaTeX" = {
@@ -87,83 +100,25 @@ let
   };
   zedFragmentJson = builtins.toJSON zedSettings;
 in
-pkgs.mkShell {
+common.mkShell {
   buildInputs = [
     texEnv
     pkgs.texlab
     pkgs.pandoc
     pkgs.ghostscript
-  ] ++ extraPackages;
+  ]
+  ++ extraPackages;
 
   shellHook = ''
-    # Auto-regenerate config files when devshell version changes
-    devshell_stamp=".devshell.stamp"
-    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
-      rm -rf .vscode .zed 2>/dev/null
-      echo "${devshellVersion}" > "$devshell_stamp"
-    fi
+    ${writeVscodeSettings settingsJson}
+    ${writeZedFragment "latex" zedFragmentJson}
+    ${writeLspWrapper {
+      name = "texlab";
+      command = "texlab";
+    }}
+    ${mergeZedSettings}
 
     echo "📄 LaTeX environment initialized"
-    mkdir -p .vscode
-    if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${builtins.toJSON vscodeSettings}' ]; then
-      echo '${builtins.toJSON vscodeSettings}' > .vscode/settings.json
-    fi
-
-    # Setup Zed LSP wrapper for texlab using direct nix store path (no direnv needed)
-    mkdir -p .zed/lsp
-    cat > .zed/lsp/texlab << TEXLAB_WRAPPER
-#!/usr/bin/env bash
-# texlab LSP wrapper - direct nix store path
-exec "${texlabPath}" "\$@"
-TEXLAB_WRAPPER
-    chmod +x .zed/lsp/texlab
-
-    # Write Zed settings fragment for merging
-    mkdir -p .zed/lsp-config
-    echo '${zedFragmentJson}' > .zed/lsp-config/latex.json
-
-    # Merge all Zed settings fragments into .zed/settings.json
-    if command -v node &>/dev/null; then
-      node -e "
-        const fs = require('fs');
-        const path = require('path');
-        const configDir = '.zed/lsp-config';
-        const fragments = [];
-        if (fs.existsSync(configDir)) {
-          fs.readdirSync(configDir).forEach(f => {
-            if (f.endsWith('.json')) {
-              try {
-                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
-              } catch (e) {
-                console.error('Failed to parse fragment:', f, e.message);
-              }
-            }
-          });
-        }
-        function deepMerge(target, source) {
-          const output = Object.assign({}, target);
-          if (typeof target === 'object' && typeof source === 'object') {
-            Object.keys(source).forEach(key => {
-              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
-                output[key] = deepMerge(target[key] || {}, source[key]);
-              } else {
-                output[key] = source[key];
-              }
-            });
-          }
-          return output;
-        }
-        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
-        // Replace __PROJECT_DIR__ placeholder with actual project directory
-        const projectDir = process.env.PWD || process.cwd();
-        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
-        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
-        console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
-      "
-    else
-      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
-      echo "⚠️  Node not available. Using LaTeX Zed settings only."
-    fi
   '';
 
   passthru = {

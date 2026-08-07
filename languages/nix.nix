@@ -1,8 +1,19 @@
-{ pkgs, devshellVersion ? "", ... }:
+{ pkgs, ... }:
 
-{ extraPackages ? [] }:
+{
+  extraPackages ? [ ],
+}:
 
 let
+  common = import ./common.nix { inherit pkgs; };
+  inherit (common)
+    mkShell
+    writeVscodeSettings
+    writeZedFragment
+    mergeZedSettings
+    writeLspWrapper
+    ;
+
   # The settings we want to force in VS Code
   nixfmtPath = "${pkgs.nixfmt}/bin/nixfmt";
   nilPath = "${pkgs.nil}/bin/nil";
@@ -16,11 +27,14 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
+  # Zed LSP settings fragment
   zedSettings = {
     "languages" = {
       "Nix" = {
-        "language_servers" = [ "nixd" "nil" ];
+        "language_servers" = [
+          "nixd"
+          "nil"
+        ];
         "formatter" = {
           "external" = {
             "command" = "nixfmt";
@@ -43,105 +57,39 @@ let
   };
   zedFragmentJson = builtins.toJSON zedSettings;
 in
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    nil
-    nixd
-    statix
-    nixfmt
-    deadnix
-  ] ++ extraPackages;
+common.mkShell {
+  buildInputs =
+    with pkgs;
+    [
+      nil
+      nixd
+      statix
+      nixfmt
+      deadnix
+    ]
+    ++ extraPackages;
 
   shellHook = ''
-    # Auto-regenerate config files when devshell version changes
-    devshell_stamp=".devshell.stamp"
-    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
-      rm -rf .vscode .zed .bin 2>/dev/null
-      echo "${devshellVersion}" > "$devshell_stamp"
-    fi
+    ${writeVscodeSettings settingsJson}
+    ${writeZedFragment "nix" zedFragmentJson}
+    ${writeLspWrapper {
+      name = "nixd";
+      command = "nixd";
+    }}
+    ${writeLspWrapper {
+      name = "nil";
+      command = "nil";
+    }}
+    ${mergeZedSettings}
 
     echo "❄️ Nix dev environment loaded"
 
-    # 1. Create the local bin folder
+    # Local bin folder with symlinked tools (usable outside the shell)
     mkdir -p .bin
-
-    # Create symlink for nixfmt
     ln -sf "$(type -p nixfmt)" .bin/nixfmt
-
-    # Add .bin to PATH
     export PATH="$PWD/.bin:$PATH"
 
-    # Auto-generate VS Code settings
-    mkdir -p .vscode
-    if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
-      echo '${settingsJson}' > .vscode/settings.json
-    fi
     echo "📝 VS Code settings synchronized."
-
-    # Setup Zed LSP wrappers using direct nix store paths (no direnv needed)
-    mkdir -p .zed/lsp
-
-    cat > .zed/lsp/nixd << NIXD_WRAPPER
-#!/usr/bin/env bash
-# nixd LSP wrapper - direct nix store path
-exec "${nixdPath}" "\$@"
-NIXD_WRAPPER
-    chmod +x .zed/lsp/nixd
-
-    cat > .zed/lsp/nil << NIL_WRAPPER
-#!/usr/bin/env bash
-# nil LSP wrapper - direct nix store path
-exec "${nilPath}" "\$@"
-NIL_WRAPPER
-    chmod +x .zed/lsp/nil
-
-    # Write Zed settings fragment for merging
-    mkdir -p .zed/lsp-config
-    echo '${zedFragmentJson}' > .zed/lsp-config/nix.json
-
-    # Merge all Zed settings fragments into .zed/settings.json
-    if command -v node &>/dev/null; then
-      node -e "
-        const fs = require('fs');
-        const path = require('path');
-        const configDir = '.zed/lsp-config';
-        const fragments = [];
-        if (fs.existsSync(configDir)) {
-          fs.readdirSync(configDir).forEach(f => {
-            if (f.endsWith('.json')) {
-              try {
-                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
-              } catch (e) {
-                console.error('Failed to parse fragment:', f, e.message);
-              }
-            }
-          });
-        }
-        function deepMerge(target, source) {
-          const output = Object.assign({}, target);
-          if (typeof target === 'object' && typeof source === 'object') {
-            Object.keys(source).forEach(key => {
-              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
-                output[key] = deepMerge(target[key] || {}, source[key]);
-              } else {
-                output[key] = source[key];
-              }
-            });
-          }
-          return output;
-        }
-        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
-        // Replace __PROJECT_DIR__ placeholder with actual project directory
-        const projectDir = process.env.PWD || process.cwd();
-        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
-        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
-        console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
-      "
-    else
-      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
-      echo "⚠️  Node not available. Using Nix Zed settings only."
-    fi
-
   '';
   passthru = {
     inherit vscodeSettings zedSettings;

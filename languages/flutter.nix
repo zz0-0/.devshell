@@ -1,24 +1,49 @@
-{ pkgs, devshellVersion ? "", ... } @ args:
+{ pkgs, ... }:
 
-{ extraPackages ? [], withEmulator ? false }:
+{
+  extraPackages ? [ ],
+  withEmulator ? false,
+}:
 
 let
   lib = pkgs.lib;
 
+  common = import ./common.nix { inherit pkgs; };
+  inherit (common)
+    mkShell
+    writeVscodeSettings
+    writeZedFragment
+    mergeZedSettings
+    writeLspWrapper
+    ;
+
   # Note: Requires config.android_sdk.accept_license = true; to be set in your
   # top-level nixpkgs configuration (e.g., in flake.nix or ~/.config/nixpkgs/config.nix)
   androidComposition = pkgs.androidenv.composeAndroidPackages {
-    buildToolsVersions = [ "36.0.0" "28.0.3" ];
-    platformVersions   = [ "36" "28" ];
-    abiVersions =
-      [ "armeabi-v7a" "arm64-v8a" ]
-      ++ lib.optional withEmulator "x86_64";
+    buildToolsVersions = [
+      "36.0.0"
+      "28.0.3"
+    ];
+    platformVersions = [
+      "36"
+      "28"
+    ];
+    abiVersions = [
+      "armeabi-v7a"
+      "arm64-v8a"
+    ]
+    ++ lib.optional withEmulator "x86_64";
 
-    includeEmulator     = withEmulator;
+    includeEmulator = withEmulator;
     includeSystemImages = withEmulator;
   };
 
   androidSdk = androidComposition.androidsdk;
+
+  # Key the patched-SDK cache by the store hash so it is rebuilt automatically
+  # when nixpkgs updates (no stale /tmp copy).
+  flutterStoreHash = builtins.substring 11 32 "${pkgs.flutter}";
+  patchedSdk = "/tmp/flutter-sdk-${flutterStoreHash}";
 
   vscodeSettings = {
     "dart.flutterSdkPath" = ".flutter-sdk";
@@ -27,12 +52,12 @@ let
   };
   settingsJson = builtins.toJSON vscodeSettings;
 
-  # Zed LSP settings fragment (relative paths, no hardcoded nix-store paths)
+  # Zed LSP settings fragment
   zedSettings = {
     "languages" = {
       "Dart" = {
         "format_on_save" = "on";
-        "language_servers" = ["dart"];
+        "language_servers" = [ "dart" ];
       };
     };
     "lsp" = {
@@ -49,56 +74,56 @@ let
   };
   zedFragmentJson = builtins.toJSON zedSettings;
 
-  # Direct nix store paths for the LSP wrapper (no direnv, no symlinks needed)
-  dartBin = "${pkgs.flutter}/bin/dart";
-  flutterBin = "${pkgs.flutter}/bin/flutter";
-  flutterRoot = pkgs.flutter;
-
-in pkgs.mkShell {
+in
+common.mkShell {
   ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
 
-  buildInputs = with pkgs; [
-    flutter
-    androidSdk
-    jdk17
-    gradle
-    cmake
-    ninja
-    pkg-config
-    sysprof
-    clang
-    chromium
-    gtk3
-    glib
-    mesa-demos
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXrandr
-    xorg.libXi
-    libxkbcommon
-    libGL
-    libglvnd
-    wayland
-    curl
-    unzip
-    zip
-    which
-  ] ++ extraPackages;
+  buildInputs =
+    with pkgs;
+    [
+      flutter
+      androidSdk
+      jdk17
+      gradle
+      cmake
+      ninja
+      pkg-config
+      sysprof
+      clang
+      chromium
+      gtk3
+      glib
+      mesa-demos
+      xorg.libX11
+      xorg.libXcursor
+      xorg.libXrandr
+      xorg.libXi
+      libxkbcommon
+      libGL
+      libglvnd
+      wayland
+      curl
+      unzip
+      zip
+      which
+    ]
+    ++ extraPackages;
 
   shellHook = ''
-    # Auto-regenerate config files when devshell version changes
-    devshell_stamp=".devshell.stamp"
-    if [ ! -f "$devshell_stamp" ] || [ "$(cat "$devshell_stamp" 2>/dev/null)" != "${devshellVersion}" ]; then
-      rm -rf .vscode .zed .flutter-sdk .dart_tool 2>/dev/null
-      echo "${devshellVersion}" > "$devshell_stamp"
-    fi
+    ${writeVscodeSettings settingsJson}
+    ${writeZedFragment "flutter" zedFragmentJson}
+    ${writeLspWrapper {
+      name = "dart";
+      command = "dart language-server";
+    }}
+    ${mergeZedSettings}
 
     export TERM=xterm-256color
     ln -sfn "${pkgs.flutter}" .flutter-sdk
 
     # NixOS: flutter_tester in the nix store lacks +x permission.
-    # Create a writable SDK mirror with executable engine in /tmp.
-    PATCHED_SDK="/tmp/kenix-flutter-sdk"
+    # Create a writable SDK mirror with executable engine in /tmp (keyed by store hash).
+    PATCHED_SDK="${patchedSdk}"
     if [ ! -d "$PATCHED_SDK" ]; then
       FLUTTER_ORIG="${pkgs.flutter}"
       mkdir -p "$PATCHED_SDK"
@@ -125,17 +150,12 @@ in pkgs.mkShell {
       cp "$FLUTTER_ORIG/bin/cache/artifacts/engine/linux-x64/"* \
         "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/"
       chmod +x "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/flutter_tester"
-      echo "✅ Flutter engine patched for NixOS (cached at /tmp/kenix-flutter-sdk)"
+      echo "✅ Flutter engine patched for NixOS (cached at $PATCHED_SDK)"
     fi
     export FLUTTER_ROOT="$PATCHED_SDK"
 
     # Set pkg-config paths for Linux desktop development
     export PKG_CONFIG_PATH="${pkgs.sysprof}/lib/pkgconfig:${pkgs.glib.dev}/lib/pkgconfig:${pkgs.gtk3}/lib/pkgconfig:${pkgs.xorg.libX11}/lib/pkgconfig"
-
-    mkdir -p .vscode
-    if [ ! -f .vscode/settings.json ] || [ "$(cat .vscode/settings.json 2>/dev/null)" != '${settingsJson}' ]; then
-      echo '${settingsJson}' > .vscode/settings.json
-    fi
 
     export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
     export CHROME_EXECUTABLE=${pkgs.chromium}/bin/chromium
@@ -201,64 +221,6 @@ in pkgs.mkShell {
 
     if [ -n "$PS1" ]; then
       echo "Flutter environment ready (${if withEmulator then "emulator" else "standard"})"
-    fi
-
-    # Setup Zed LSP wrapper for dart (NixOS compatible)
-    # Uses direct nix store path - no direnv or symlinks needed
-    mkdir -p .zed/lsp
-    cat > .zed/lsp/dart << DART_WRAPPER
-#!/usr/bin/env bash
-# Dart LSP wrapper - uses direct nix store path
-export FLUTTER_ROOT="${flutterRoot}"
-exec "${dartBin}" language-server "\$@"
-DART_WRAPPER
-    chmod +x .zed/lsp/dart
-
-    # Write Zed settings fragment for merging
-    mkdir -p .zed/lsp-config
-    echo '${zedFragmentJson}' > .zed/lsp-config/flutter.json
-
-    # Merge all Zed settings fragments into .zed/settings.json
-    if command -v node &>/dev/null; then
-      node -e "
-        const fs = require('fs');
-        const path = require('path');
-        const configDir = '.zed/lsp-config';
-        const fragments = [];
-        if (fs.existsSync(configDir)) {
-          fs.readdirSync(configDir).forEach(f => {
-            if (f.endsWith('.json')) {
-              try {
-                fragments.push(JSON.parse(fs.readFileSync(path.join(configDir, f), 'utf8')));
-              } catch (e) {
-                console.error('Failed to parse fragment:', f, e.message);
-              }
-            }
-          });
-        }
-        function deepMerge(target, source) {
-          const output = Object.assign({}, target);
-          if (typeof target === 'object' && typeof source === 'object') {
-            Object.keys(source).forEach(key => {
-              if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
-                output[key] = deepMerge(target[key] || {}, source[key]);
-              } else {
-                output[key] = source[key];
-              }
-            });
-          }
-          return output;
-        }
-        const merged = fragments.reduce((acc, frag) => deepMerge(acc, frag), {});
-        // Replace __PROJECT_DIR__ placeholder with actual project directory
-        const projectDir = process.env.PWD || process.cwd();
-        const settingsStr = JSON.stringify(merged, null, 2).replace(/__PROJECT_DIR__/g, projectDir);
-        fs.writeFileSync('.zed/settings.json', settingsStr + '\n');
-        console.log('✅ Zed settings merged from', fragments.length, 'fragment(s)');
-      "
-    else
-      echo '${zedFragmentJson}' | sed "s|__PROJECT_DIR__|$PWD|g" > .zed/settings.json
-      echo "⚠️  Node not available. Using Flutter Zed settings only."
     fi
   '';
   passthru = {

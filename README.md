@@ -1,43 +1,31 @@
 # DevShell Flake: Multi-Language Development Environments
 
-A modular Nix flake providing development environments for multiple programming languages with automatic tooling and VS Code integration.
+A modular Nix flake providing development environments for multiple programming languages, built around the **NixOS + direnv** workflow: each project folder gets its own isolated toolchain (language servers, formatters, linters, dependency management) with no containers or VMs — the Nix store deduplicates everything.
 
 ## ✨ Features
 
-- **Unified Development Environments**: Consistent environments across languages
-- **VS Code Integration**: Automatic `.vscode/settings.json` generation
-- **Automatic Dependency Management**: Detects dependency files and installs packages
+- **Per-Folder Isolation**: `use flake` in a project's `.envrc` activates exactly the toolchain that project needs
+- **Editor Integration**: Automatic `.vscode/settings.json` and `.zed/settings.json` generation; LSP servers resolve through the project's direnv environment, so they work regardless of how the editor was launched
+- **Automatic Dependency Management**: Detects dependency files and installs/syncs them (poetry/pip, cargo, pub, maven)
 - **Language-Aware Tools**: Includes language servers, formatters, and linters
-- **Modular Design**: Combine languages or use standalone environments
+- **Project Scaffolding**: `nix flake init -t devshell#<lang>` creates a ready-to-use project
 - **Cross-Platform**: Supports x86_64-linux and aarch64-linux
-
-## 📦 Supported Languages
-
-### Combined Environments (with Nix + Markdown)
-Each combined environment includes:
-- Language-specific tooling
-- Nix development tools (nixfmt, nil, statix, deadnix)
-- Markdown tooling (ltex-ls, markdown-oxide, rumdl)
-
-| Language | Tools Included | Combined Function |
-|----------|----------------|-------------------|
-| **LaTeX** | texlive (scheme-medium), texlab, pandoc | `devshell.lib.<system>.latex` |
-| **Python** | python3, poetry, pyright, black, ruff, mypy | `devshell.lib.<system>.python` |
-| **Rust** | cargo, rustc, rust-analyzer, rustfmt, clippy | `devshell.lib.<system>.rust` |
-| **Flutter** | flutter, android-sdk, jdk17, gradle, cmake | `devshell.lib.<system>.flutter` |
-| **Java** | jdk25, jdt-language-server, maven, gradle | `devshell.lib.<system>.java` |
-
-### Standalone Environments
-For advanced use cases where you want more control:
-| Language | Function | Description |
-|----------|----------|-------------|
-| Nix | `devshell.lib.<system>.nix` | Nix development tools only |
-| Markdown | `devshell.lib.<system>.markdown` | Markdown tooling only |
-| Language-only | `devshell.lib.<system>.<lang>Standalone` | Language without Nix+Markdown |
 
 ## 🚀 Quick Start
 
-### 1. Add to Your Project Flake
+```bash
+# 1. Scaffold a project (creates flake.nix + .envrc + .gitignore)
+nix flake init -t github:zz0-0/devshell#python
+
+# 2. Enable direnv
+direnv allow
+```
+
+That's it. Entering the directory now gives you a Python environment with
+pyright/ruff, auto-venv, and automatic dependency installation — isolated to
+that folder.
+
+### Without Templates
 
 ```nix
 # flake.nix
@@ -47,156 +35,151 @@ For advanced use cases where you want more control:
     devshell.url = "github:zz0-0/devshell";
   };
 
-  outputs = { self, nixpkgs, devshell, ... }: let
+  outputs = { self, nixpkgs, devshell }: {
     # Supported systems: x86_64-linux, aarch64-linux
-    system = "x86_64-linux";
-  in {
-    devShells.${system} = {
-      # Create language-specific development shells
-      # User Python just as an example
-      python = devshell.lib.${system}.python { };
-    };
+    devShells.x86_64-linux.default = devshell.lib.x86_64-linux.python { };
   };
 }
 ```
 
-### 2. Enter a DevShell
-
 ```bash
-# Enter a specific language environment
-nix develop .#python
-
-# Or using direnv for automatic environment activation
-echo "use flake .#python" > .envrc && direnv allow
+echo "use flake" > .envrc && direnv allow
 ```
 
-### 3. Use with VS Code
+Or without direnv: `nix develop` to enter the shell interactively.
 
-VS Code will automatically:
-- Use the correct language server from the Nix environment
-- Apply formatting on save
-- Use project-specific settings from `.vscode/settings.json`
+## 📦 Supported Languages
+
+| Language | Function | Tools Included |
+|----------|----------|----------------|
+| **Python** | `devshell.lib.<system>.python` | python3, pip, poetry, ruff, basedpyright |
+| **Rust** | `devshell.lib.<system>.rust` | cargo, rustc, rust-analyzer, rustfmt, clippy, lldb |
+| **Flutter** | `devshell.lib.<system>.flutter` | flutter, android-sdk, jdk17, gradle, cmake, chromium |
+| **LaTeX** | `devshell.lib.<system>.latex` | texlive (scheme-medium + latexextra), texlab, pandoc, ghostscript |
+| **Nix** | `devshell.lib.<system>.nix` | nil, nixd, statix, nixfmt, deadnix |
+| **Markdown** | `devshell.lib.<system>.markdown` | markdown-oxide |
+| **PostgreSQL** | `devshell.lib.<system>.postgresql` | postgresql + start_pg/stop_pg/reset_pg helpers |
+| **Java** | `devshell.lib.<system>.java` | jdk25, jdt-language-server, maven, gradle |
 
 ## 🛠️ Language-Specific Features
 
 ### Python Environment
-- **Auto-venv**: Creates and activates virtual environment
+- **Auto-venv**: Creates and activates `.venv/`
 - **Dependency Detection**: Automatically detects and installs from:
   - `pyproject.toml` + `poetry.lock` → `poetry install`
-  - `pyproject.toml` → `pip install .`
+  - `pyproject.toml` → `pip install -e .`
   - `requirements.txt` → `pip install -r requirements.txt`
 - **Hash Tracking**: Only reinstalls when dependencies change
-- **Tools**: poetry, pyright, black, isort, flake8, mypy, ruff
 
 ### Rust Environment
-- **Cargo Cache**: Automatically runs `cargo fetch` when `Cargo.toml` changes
-- **Toolchain**: Full Rust toolchain with rust-analyzer integration
+- **Cargo Cache**: Runs `cargo fetch` when `Cargo.toml`/`Cargo.lock` changes
 - **Formatting**: rustfmt configured for format-on-save
-- **Tools**: cargo, rustc, rust-analyzer, rustfmt, clippy
 
 ### Flutter Environment
-- **Android SDK**: Pre-configured Android development environment
-- **License Management**: Automatically attempts to accept Android licenses
+- **Android SDK**: Pre-configured with license auto-acceptance
+- **Engine Patch**: NixOS `flutter_tester` executable fix (cached in `/tmp`, keyed by store hash)
 - **Freezed Support**: Auto-runs `build_runner` when freezed is detected
 - **Desktop Development**: Linux desktop dependencies (GTK, X11, Wayland)
-- **Tools**: flutter, android-sdk, jdk17, gradle, cmake, ninja
 
 ### LaTeX Environment
-- **VS Code Integration**: Configures latex-workshop with absolute paths
-- **Build Automation**: Uses latexmk with automatic synctex generation
-- **Tooling**: Full texlive scheme-medium with biber, biblatex support
-- **Tools**: texlive, texlab, pandoc, ghostscript
+- **VS Code Integration**: latex-workshop configured with absolute store paths
+- **Build Automation**: latexmk with synctex, `-outdir=build`
 
-### Nix Environment
-- **Formatter Integration**: Creates symlinks for nixfmt accessible to VS Code
-- **Language Server**: Configures nil as the Nix language server
-- **Tooling**: Complete Nix development toolchain
-- **Tools**: nil, nixd, statix, nixfmt, deadnix
+### PostgreSQL Environment
+- **Project-Local Data**: data lives in `.postgres/` inside the project
+- **Helpers**: `start_pg`, `stop_pg`, `reset_pg` commands added to PATH
 
-## 🔧 Advanced Usage
-
-### Customizing Environments
+## 🔧 Customizing Environments
 
 ```nix
 # Add extra packages to any environment
-python = devshell.lib.python {
-  extraPackages = [ pkgs.redis pkgs.postgresql ];
+devShells.x86_64-linux.default = devshell.lib.x86_64-linux.python {
+  extraPackages = [ pkgs.redis ];
 };
 
 # Flutter with emulator support
-flutter = devshell.lib.flutter {
+devShells.x86_64-linux.default = devshell.lib.x86_64-linux.flutter {
   withEmulator = true;
-  extraPackages = [ pkgs.emacs ];
 };
-```
 
-### Creating Combined Shells Manually
-
-```nix
-# Combine multiple language shells
-combined = devshell.lib.combineShells [
-  (devshell.lib.pythonStandalone { })
-  (devshell.lib.rustStandalone { })
-  (devshell.lib.nix { })
-];
-```
-
-### Using the `withNixAndMarkdown` Helper
-
-```nix
-# Add Nix+Markdown to any custom shell function
-customShell = devshell.lib.withNixAndMarkdown (args: pkgs.mkShell {
-  buildInputs = [ pkgs.nodejs pkgs.yarn ];
-  shellHook = "echo 'Node.js environment'";
-}) { };
+# Choose a different Python or JDK
+devShells.x86_64-linux.default = devshell.lib.x86_64-linux.python {
+  python = pkgs.python312;
+};
+devShells.x86_64-linux.default = devshell.lib.x86_64-linux.java {
+  jdk = pkgs.jdk21;
+};
 ```
 
 ## 🏗️ Project Structure
 
 ```
 .devshell/
-├── flake.nix              # Main flake configuration
-├── languages/             # Language-specific modules
-│   ├── latex.nix         # LaTeX development environment
-│   ├── python.nix        # Python development environment  
-│   ├── rust.nix          # Rust development environment
-│   ├── flutter.nix       # Flutter development environment
-│   ├── nix.nix           # Nix development tools
-│   └── markdown.nix      # Markdown tooling
-└── README.md             # This file
+├── flake.nix                # Main flake configuration (lib, formatter, checks, templates)
+├── languages/
+│   ├── common.nix           # Shared helpers (LSP wrappers, settings writers)
+│   ├── python.nix           # Python development environment
+│   ├── rust.nix             # Rust development environment
+│   ├── flutter.nix          # Flutter development environment
+│   ├── latex.nix            # LaTeX development environment
+│   ├── nix.nix              # Nix development tools
+│   ├── markdown.nix         # Markdown tooling
+│   ├── postgresql.nix       # PostgreSQL development environment
+│   └── java.nix             # Java development environment
+└── templates/               # `nix flake init -t` scaffolds (one dir per language)
 ```
 
 ## 🔄 Auto-Generated Files
 
-When you enter a devshell, it automatically creates:
-- `.vscode/settings.json` – VS Code configuration
-- `.venv/` – Python virtual environment (for Python shells)
+When you enter a devshell, it automatically creates (project-local, gitignored):
+- `.vscode/settings.json` – VS Code configuration (language server paths, formatters)
+- `.zed/settings.json` – Zed configuration
+- `.zed/lsp/` – LSP wrapper scripts resolving through `direnv exec`
+- `.venv/` – Python virtual environment (Python shells)
 - `.dart_tool/` – Flutter cache and stamp files
-- `.bin/` – Symlinks to Nix tools (for Nix shell)
+- `.postgres/` – PostgreSQL data directory (PostgreSQL shells)
+- `.bin/` – Symlinks to Nix tools (Nix shell)
 - `target/` – Rust build directory
 
-## 📝 VS Code Integration Details
+All files are regenerated idempotently: nothing is wiped on updates, and files
+are only rewritten when their content actually changed.
 
-The devshell automatically generates `.vscode/settings.json` with:
-- Language server paths from the Nix store
-- Formatter configurations
-- Save/format policies
-- Project-specific tool paths
+## 🧠 How It Works
 
-This ensures VS Code uses the exact same tools as your shell environment.
+- **direnv + `use flake`** is the core mechanism: entering a project directory loads its `devShells.default`, so `PATH` and environment variables come from the Nix store and are scoped to that folder.
+- **LSP wrappers** (`languages/common.nix`) resolve the project root from their own location and run the language server via `direnv exec`, so Zed/VS Code always use the exact toolchain of the project — even when launched from outside the shell.
+- **Hash stamps** skip expensive operations (venv install, `cargo fetch`, `flutter pub get`, maven fetch) until the dependency files actually change.
+
+### Combining Languages
+
+Shells can be combined for multi-language projects; each shell writes a Zed
+settings *fragment* (`.zed/lsp-config/<lang>.json`) and they are deep-merged
+into `.zed/settings.json`:
+
+```nix
+devShells.${system}.default = pkgs.mkShellNoCC {
+  buildInputs = nixShell.buildInputs ++ markdownShell.buildInputs;
+  shellHook = ''
+    ${nixShell.shellHook}
+    ${markdownShell.shellHook}
+  '';
+};
+```
+
+Note: `.vscode/settings.json` can only hold one language's configuration — the
+last shell in the hook wins there. Zed settings merge correctly for all shells.
 
 ## 🔒 Security Notes
 
 - **Android Licenses**: The Flutter environment attempts to accept Android SDK licenses automatically. If this fails, run `flutter doctor --android-licenses` manually.
-- **Nix Config**: Requires `allowUnfree = true` and `android_sdk.accept_license = true` in your Nix configuration for full functionality.
+- **Nix Config**: This flake sets `allowUnfree = true` and `android_sdk.accept_license = true` for its own nixpkgs instance; no global config changes required.
 
 ## 🤝 Contributing
 
 To add a new language:
-1. Create a new file in `languages/` directory
-2. Follow the pattern: export both standalone and combined versions
-3. Include VS Code settings generation
-4. Add to the `lib` outputs in `flake.nix`
+1. Create a new file in `languages/` following the existing pattern (uses helpers from `common.nix`)
+2. Add it to the `lib` outputs in `flake.nix`
+3. Add a template directory under `templates/`
 
 ## 📄 License
 
