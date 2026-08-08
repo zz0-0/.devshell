@@ -8,7 +8,7 @@ pkgs.mkShell {
   buildInputs =
     with pkgs;
     [
-      postgresql
+      postgresql_19
     ]
     ++ extraPackages;
 
@@ -35,7 +35,7 @@ pkgs.mkShell {
     if [ ! -d "$PGDATA" ]; then
       echo "📦 Initializing PostgreSQL at $PGDATA"
       mkdir -p "$PGDATA"
-      initdb --auth=trust --encoding=UTF8 --locale=C
+      initdb --auth=trust --encoding=UTF8 --locale=C -U postgres
     fi
 
     # Create socket directory (needed on NixOS)
