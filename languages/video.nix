@@ -20,6 +20,7 @@ common.mkShell {
       librsvg
       potrace
       yt-dlp
+      unzip
       yq
       ripgrep
       fd
