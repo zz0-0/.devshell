@@ -51,6 +51,7 @@
           markdown = import ./languages/markdown.nix { inherit pkgs; };
           postgresql = import ./languages/postgresql.nix { inherit pkgs; };
           java = import ./languages/java.nix { inherit pkgs; };
+          video = import ./languages/video.nix { inherit pkgs; };
         }
       );
 
@@ -71,6 +72,7 @@
             (lib.markdown { })
             (lib.postgresql { })
             (lib.java { })
+            (lib.video { })
           ];
         in
         {
@@ -112,6 +114,10 @@
         java = mkTemplate {
           name = "java";
           description = "Java project";
+        };
+        video = mkTemplate {
+          name = "video";
+          description = "Video production project";
         };
       };
     };

@@ -60,6 +60,7 @@ Or without direnv: `nix develop` to enter the shell interactively.
 | **Markdown** | `devshell.lib.<system>.markdown` | markdown-oxide |
 | **PostgreSQL** | `devshell.lib.<system>.postgresql` | postgresql + start_pg/stop_pg/reset_pg helpers |
 | **Java** | `devshell.lib.<system>.java` | jdk25, jdt-language-server, maven, gradle |
+| **Video** | `devshell.lib.<system>.video` | ffmpeg, Chromium, Node, Python, uv, media CLI, Whisper, Assimp |
 
 ## 🛠️ Language-Specific Features
 
@@ -91,6 +92,12 @@ Or without direnv: `nix develop` to enter the shell interactively.
 ### PostgreSQL Environment
 - **Project-Local Data**: data lives in `.postgres/` inside the project
 - **Helpers**: `start_pg`, `stop_pg`, `reset_pg` commands added to PATH
+
+### Video Environment
+- **Toolchain**: ffmpeg, Chromium, Node, Python, uv, media CLI, Whisper, Assimp
+- **Browser**: Nix Chromium is exported as `HYPERFRAMES_BROWSER_PATH`, `REMOTION_BROWSER_EXECUTABLE`, and `CHROME_PATH`
+- **No auto-venv**: this shell does not create `.venv`; use `uv` when a project needs Python packages
+- **GUI software**: Kdenlive, OBS, GIMP, Inkscape, Audacity, Aegisub, MeshLab, and Blender stay in the NixOS/Home Manager configuration, not in the project shell
 
 ## 🔧 Customizing Environments
 
@@ -165,6 +172,24 @@ devShells.${system}.default = pkgs.mkShellNoCC {
   shellHook = ''
     ${nixShell.shellHook}
     ${markdownShell.shellHook}
+  '';
+};
+```
+
+Video can be combined the same way:
+
+```nix
+let
+  pythonShell = devshell.lib.${system}.python { };
+  rustShell = devshell.lib.${system}.rust { };
+  videoShell = devshell.lib.${system}.video { };
+in
+devShells.${system}.default = pkgs.mkShellNoCC {
+  buildInputs = pythonShell.buildInputs ++ rustShell.buildInputs ++ videoShell.buildInputs;
+  shellHook = ''
+    ${pythonShell.shellHook}
+    ${rustShell.shellHook}
+    ${videoShell.shellHook}
   '';
 };
 ```
