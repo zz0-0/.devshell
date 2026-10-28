@@ -41,9 +41,10 @@ let
   androidSdk = androidComposition.androidsdk;
 
   # Key the patched-SDK cache by the store hash so it is rebuilt automatically
-  # when nixpkgs updates (no stale /tmp copy).
+  # when nixpkgs updates (no stale /tmp copy). The -v2 suffix invalidates the
+  # old incomplete layout created by earlier versions of this patch.
   flutterStoreHash = builtins.substring 11 32 "${pkgs.flutter}";
-  patchedSdk = "/tmp/flutter-sdk-${flutterStoreHash}";
+  patchedSdk = "/tmp/flutter-sdk-${flutterStoreHash}-v4";
 
   vscodeSettings = {
     "dart.flutterSdkPath" = ".flutter-sdk";
@@ -89,6 +90,7 @@ common.mkShell {
       ninja
       pkg-config
       sysprof
+      libsysprof-capture
       clang
       chromium
       gtk3
@@ -129,7 +131,9 @@ common.mkShell {
       mkdir -p "$PATCHED_SDK"
       for d in "$FLUTTER_ORIG"/*; do
         name=$(basename "$d")
-        [ "$name" != "bin" ] && ln -sfn "$d" "$PATCHED_SDK/$name"
+        if [ "$name" != "bin" ] && [ "$name" != "packages" ]; then
+          ln -sfn "$d" "$PATCHED_SDK/$name"
+        fi
       done
       mkdir "$PATCHED_SDK/bin"
       for f in "$FLUTTER_ORIG/bin"/*; do
@@ -141,21 +145,68 @@ common.mkShell {
         name=$(basename "$f")
         [ "$name" != "artifacts" ] && ln -sfn "$f" "$PATCHED_SDK/bin/cache/$name"
       done
-      mkdir -p "$PATCHED_SDK/bin/cache/artifacts/engine"
-      for f in "$FLUTTER_ORIG/bin/cache/artifacts/engine"/*; do
+
+      # Mirror every artifact directory, not just engine: Flutter also needs
+      # gradle_wrapper, material_fonts, ios-deploy, etc.
+      mkdir -p "$PATCHED_SDK/bin/cache/artifacts"
+      for f in "$FLUTTER_ORIG/bin/cache/artifacts"/*; do
         name=$(basename "$f")
-        [ "$name" != "linux-x64" ] && ln -sfn "$f" "$PATCHED_SDK/bin/cache/artifacts/engine/$name"
+        if [ "$name" != "engine" ]; then
+          ln -sfn "$f" "$PATCHED_SDK/bin/cache/artifacts/$name"
+          continue
+        fi
+
+        mkdir -p "$PATCHED_SDK/bin/cache/artifacts/engine"
+        for e in "$f"/*; do
+          ename=$(basename "$e")
+          if [ "$ename" != "linux-x64" ]; then
+            ln -sfn "$e" "$PATCHED_SDK/bin/cache/artifacts/engine/$ename"
+            continue
+          fi
+
+          # flutter_tester needs a real writable copy with +x. Everything
+          # else (including the flutter_linux headers and shader_lib
+          # directories) can stay symlinked into the read-only store.
+          mkdir -p "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64"
+          for l in "$e"/*; do
+            lname=$(basename "$l")
+            if [ "$lname" = "flutter_tester" ]; then
+              cp "$l" "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/$lname"
+              chmod +x "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/$lname"
+            else
+              ln -sfn "$l" "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/$lname"
+            fi
+          done
+        done
       done
-      mkdir -p "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64"
-      cp "$FLUTTER_ORIG/bin/cache/artifacts/engine/linux-x64/"* \
-        "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/"
-      chmod +x "$PATCHED_SDK/bin/cache/artifacts/engine/linux-x64/flutter_tester"
+      # Gradle's includeBuild needs a writable plugin directory. Mirror the
+      # packages tree, but copy flutter_tools/gradle instead of symlinking it
+      # to the read-only store.
+      mkdir -p "$PATCHED_SDK/packages"
+      for p in "$FLUTTER_ORIG/packages"/*; do
+        name=$(basename "$p")
+        if [ "$name" = "flutter_tools" ]; then
+          mkdir -p "$PATCHED_SDK/packages/flutter_tools"
+          for f in "$p"/*; do
+            fname=$(basename "$f")
+            if [ "$fname" = "gradle" ]; then
+              cp -r "$f" "$PATCHED_SDK/packages/flutter_tools/gradle"
+              chmod -R u+w "$PATCHED_SDK/packages/flutter_tools/gradle"
+            else
+              ln -sfn "$f" "$PATCHED_SDK/packages/flutter_tools/$fname"
+            fi
+          done
+        else
+          ln -sfn "$p" "$PATCHED_SDK/packages/$name"
+        fi
+      done
+
       echo "✅ Flutter engine patched for NixOS (cached at $PATCHED_SDK)"
     fi
     export FLUTTER_ROOT="$PATCHED_SDK"
 
     # Set pkg-config paths for Linux desktop development
-    export PKG_CONFIG_PATH="${pkgs.sysprof}/lib/pkgconfig:${pkgs.glib.dev}/lib/pkgconfig:${pkgs.gtk3}/lib/pkgconfig:${pkgs.xorg.libX11}/lib/pkgconfig"
+    export PKG_CONFIG_PATH="${pkgs.libsysprof-capture}/lib/pkgconfig:${pkgs.sysprof}/lib/pkgconfig:${pkgs.glib.dev}/lib/pkgconfig:${pkgs.gtk3}/lib/pkgconfig:${pkgs.xorg.libX11}/lib/pkgconfig"
 
     export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
     export CHROME_EXECUTABLE=${pkgs.chromium}/bin/chromium

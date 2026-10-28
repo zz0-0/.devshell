@@ -98,6 +98,7 @@ Or without direnv: `nix develop` to enter the shell interactively.
 - **Browser**: Nix Chromium is exported as `HYPERFRAMES_BROWSER_PATH`, `REMOTION_BROWSER_EXECUTABLE`, and `CHROME_PATH`
 - **No auto-venv**: this shell does not create `.venv`; use `uv` when a project needs Python packages
 - **GUI software**: Kdenlive, OBS, GIMP, Inkscape, Audacity, Aegisub, MeshLab, and Blender stay in the NixOS/Home Manager configuration, not in the project shell
+- **Check**: `./scripts/check-video.sh` evaluates the video shell without pulling the LaTeX/Tex Live check
 
 ## 🔧 Customizing Environments
 
