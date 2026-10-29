@@ -1,6 +1,15 @@
 { pkgs }:
 
 let
+  # Some terminal hosts (editor tasks, CI wrappers, etc.) hand the shell
+  # TERM=dumb, which disables Starship and other prompt tools. Give
+  # interactive dev shells a sane fallback, but leave a real TERM alone.
+  termHook = ''
+    if [ -z "''${TERM-}" ] || [ "$TERM" = "dumb" ]; then
+      export TERM=xterm-256color
+    fi
+  '';
+
   # Write a JSON file, but only touch the file when its content changed
   # (avoids dirtying the working tree on every shell entry).
   writeJson = file: json: ''
@@ -20,11 +29,21 @@ let
   '';
 in
 {
-  # Wrapper around pkgs.mkShell that adds shared dependencies (jq) and the
-  # Zed settings merge, so combined shells stay consistent.
+  # Wrapper around pkgs.mkShell that adds shared dependencies (jq), the TERM
+  # fallback, and the Zed settings merge, so combined shells stay consistent.
   mkShell =
-    { buildInputs, shellHook, ... }@args:
-    pkgs.mkShell (args // { buildInputs = buildInputs ++ [ pkgs.jq ]; });
+    {
+      buildInputs,
+      shellHook ? "",
+      ...
+    }@args:
+    pkgs.mkShell (
+      args
+      // {
+        buildInputs = buildInputs ++ [ pkgs.jq ];
+        shellHook = termHook + shellHook;
+      }
+    );
 
   # Generate a direnv-based LSP wrapper script into .zed/lsp/<name>.
   # The wrapper resolves the project root from its own location and runs the

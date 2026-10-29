@@ -120,7 +120,6 @@ common.mkShell {
     }}
     ${mergeZedSettings}
 
-    export TERM=xterm-256color
     ln -sfn "${pkgs.flutter}" .flutter-sdk
 
     # NixOS: flutter_tester in the nix store lacks +x permission.

@@ -7,6 +7,7 @@ A modular Nix flake providing development environments for multiple programming 
 - **Per-Folder Isolation**: `use flake` in a project's `.envrc` activates exactly the toolchain that project needs
 - **Editor Integration**: Automatic `.vscode/settings.json` and `.zed/settings.json` generation; LSP servers resolve through the project's direnv environment, so they work regardless of how the editor was launched
 - **Automatic Dependency Management**: Detects dependency files and installs/syncs them (poetry/pip, cargo, pub, maven)
+- **Sane `TERM` fallback**: Restores `xterm-256color` when the parent environment reports `TERM=dumb`, so Starship and other prompt tools keep working
 - **Language-Aware Tools**: Includes language servers, formatters, and linters
 - **Project Scaffolding**: `nix flake init -t devshell#<lang>` creates a ready-to-use project
 - **Cross-Platform**: Supports x86_64-linux and aarch64-linux
