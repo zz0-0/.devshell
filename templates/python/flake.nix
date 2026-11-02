@@ -7,11 +7,7 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      devshell,
-    }:
+    { devshell, ... }:
     {
       # Supported systems: x86_64-linux, aarch64-linux
       devShells.x86_64-linux.default = devshell.lib.x86_64-linux.python { };

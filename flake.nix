@@ -44,6 +44,7 @@
         { pkgs, ... }: {
           # All exports are standalone - combine them in project flakes
           rust = import ./languages/rust.nix { inherit pkgs; };
+          bevy = import ./languages/bevy.nix { inherit pkgs; };
           python = import ./languages/python.nix { inherit pkgs; };
           flutter = import ./languages/flutter.nix { inherit pkgs; };
           latex = import ./languages/latex.nix { inherit pkgs; };
@@ -57,6 +58,14 @@
 
       formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt-tree);
 
+      # Editing this repo itself gets the same Nix tooling as projects.
+      devShells = forAllSystems (
+        { pkgs, ... }:
+        {
+          default = (import ./languages/nix.nix { inherit pkgs; }) { };
+        }
+      );
+
       # Eval-check: forces evaluation (not building) of every language shell so
       # `nix flake check` catches errors without downloading the world.
       checks = forAllSystems (
@@ -65,6 +74,7 @@
           lib = self.lib.${system};
           shells = [
             (lib.rust { })
+            (lib.bevy { })
             (lib.python { })
             (lib.flutter { })
             (lib.latex { })
@@ -76,9 +86,18 @@
           ];
         in
         {
+          # Force evaluation of every language shell without retaining their
+          # .drv paths as store references. Keeping the context makes
+          # `nix flake check` validate those paths, which fails spuriously
+          # after a GC even though evaluation is fine.
           eval = pkgs.writeText "devshell-eval.txt" (
-            builtins.concatStringsSep "\n" (map (s: s.drvPath) shells)
+            builtins.concatStringsSep "\n" (map (s: builtins.unsafeDiscardStringContext s.drvPath) shells)
           );
+
+          # Build the lightweight shells for real. The heavy language shells
+          # remain eval-only so `nix flake check` stays practical.
+          build-nix = lib.nix { };
+          build-markdown = lib.markdown { };
         }
       );
 
@@ -86,6 +105,10 @@
         rust = mkTemplate {
           name = "rust";
           description = "Rust project";
+        };
+        bevy = mkTemplate {
+          name = "bevy";
+          description = "Bevy game project";
         };
         python = mkTemplate {
           name = "python";

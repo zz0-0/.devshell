@@ -7,11 +7,7 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      devshell,
-    }:
+    { devshell, ... }:
     {
       devShells.x86_64-linux.default = devshell.lib.x86_64-linux.video { };
     };

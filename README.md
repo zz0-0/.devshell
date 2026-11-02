@@ -5,7 +5,7 @@ A modular Nix flake providing development environments for multiple programming 
 ## ✨ Features
 
 - **Per-Folder Isolation**: `use flake` in a project's `.envrc` activates exactly the toolchain that project needs
-- **Editor Integration**: Automatic `.vscode/settings.json` and `.zed/settings.json` generation; LSP servers resolve through the project's direnv environment, so they work regardless of how the editor was launched
+- **Editor Integration**: Automatic `.vscode/settings.json` and `.zed/settings.json` generation; LSP servers resolve through the project's direnv environment, so they work regardless of how the editor was launched.
 - **Automatic Dependency Management**: Detects dependency files and installs/syncs them (poetry/pip, cargo, pub, maven)
 - **Sane `TERM` fallback**: Restores `xterm-256color` when the parent environment reports `TERM=dumb`, so Starship and other prompt tools keep working
 - **Language-Aware Tools**: Includes language servers, formatters, and linters
@@ -49,12 +49,17 @@ echo "use flake" > .envrc && direnv allow
 
 Or without direnv: `nix develop` to enter the shell interactively.
 
+The flake also exposes `devShells.default` with the Nix tooling (`nixd`,
+`nil`, `nixfmt`, `statix`, `deadnix`) for editing this repository itself.
+Run `direnv allow` here once if you want it loaded automatically.
+
 ## 📦 Supported Languages
 
 | Language | Function | Tools Included |
 |----------|----------|----------------|
 | **Python** | `devshell.lib.<system>.python` | python3, pip, poetry, ruff, basedpyright |
 | **Rust** | `devshell.lib.<system>.rust` | cargo, rustc, rust-analyzer, rustfmt, clippy, lldb |
+| **Bevy** | `devshell.lib.<system>.bevy` | Rust toolchain + ALSA, udev, Vulkan, X11/Wayland, Mesa, mold, cargo-nextest |
 | **Flutter** | `devshell.lib.<system>.flutter` | flutter, android-sdk, jdk17, gradle, cmake, chromium |
 | **LaTeX** | `devshell.lib.<system>.latex` | texlive (scheme-medium + latexextra), texlab, pandoc, ghostscript |
 | **Nix** | `devshell.lib.<system>.nix` | nil, nixd, statix, nixfmt, deadnix |
@@ -76,6 +81,13 @@ Or without direnv: `nix develop` to enter the shell interactively.
 ### Rust Environment
 - **Cargo Cache**: Runs `cargo fetch` when `Cargo.toml`/`Cargo.lock` changes
 - **Formatting**: rustfmt configured for format-on-save
+
+### Bevy Environment
+- **Everything in Rust**: inherits the Rust shell (cargo, rust-analyzer, rustfmt, clippy, lldb)
+- **Linux runtime**: exposes ALSA, udev, Vulkan and X11/Wayland libraries on `LD_LIBRARY_PATH`
+- **NixOS GPU drivers**: prepends `/run/opengl-driver/lib` and points `VK_ICD_FILENAMES` at the active Vulkan ICD when present
+- **Build tools**: pkg-config, clang, lld, mold, cmake, wayland-protocols, cargo-nextest
+- **Scope**: a separate shell, so plain Rust projects keep their lean toolchain
 
 ### Flutter Environment
 - **Android SDK**: Pre-configured with license auto-acceptance
@@ -132,12 +144,14 @@ devShells.x86_64-linux.default = devshell.lib.x86_64-linux.java {
 │   ├── common.nix           # Shared helpers (LSP wrappers, settings writers)
 │   ├── python.nix           # Python development environment
 │   ├── rust.nix             # Rust development environment
+│   ├── bevy.nix             # Bevy game development environment
 │   ├── flutter.nix          # Flutter development environment
 │   ├── latex.nix            # LaTeX development environment
 │   ├── nix.nix              # Nix development tools
 │   ├── markdown.nix         # Markdown tooling
 │   ├── postgresql.nix       # PostgreSQL development environment
-│   └── java.nix             # Java development environment
+│   ├── java.nix             # Java development environment
+│   └── video.nix            # Video production environment
 └── templates/               # `nix flake init -t` scaffolds (one dir per language)
 ```
 
@@ -198,6 +212,17 @@ devShells.${system}.default = pkgs.mkShellNoCC {
 
 Note: `.vscode/settings.json` can only hold one language's configuration — the
 last shell in the hook wins there. Zed settings merge correctly for all shells.
+
+## ✅ Validation
+
+`nix flake check` evaluates every language shell and builds the lightweight
+`nix` and `markdown` shells. The heavy language shells (Flutter, LaTeX, video,
+PostgreSQL, Java) are eval-only so the check stays practical. CI runs the same
+check plus `statix`, `deadnix`, and `nixfmt`.
+
+```bash
+nix flake check
+```
 
 ## 🔒 Security Notes
 

@@ -7,7 +7,6 @@
 let
   common = import ./common.nix { inherit pkgs; };
   inherit (common)
-    mkShell
     writeVscodeSettings
     writeZedFragment
     mergeZedSettings
@@ -17,7 +16,6 @@ let
   # The settings we want to force in VS Code
   nixfmtPath = "${pkgs.nixfmt}/bin/nixfmt";
   nilPath = "${pkgs.nil}/bin/nil";
-  nixdPath = "${pkgs.nixd}/bin/nixd";
   vscodeSettings = {
     "nix.enableLanguageServer" = true;
     "nix.serverPath" = nilPath;

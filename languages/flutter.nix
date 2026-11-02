@@ -6,11 +6,10 @@
 }:
 
 let
-  lib = pkgs.lib;
+  inherit (pkgs) lib;
 
   common = import ./common.nix { inherit pkgs; };
   inherit (common)
-    mkShell
     writeVscodeSettings
     writeZedFragment
     mergeZedSettings
