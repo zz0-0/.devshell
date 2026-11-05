@@ -217,11 +217,14 @@ last shell in the hook wins there. Zed settings merge correctly for all shells.
 
 `nix flake check` evaluates every language shell and builds the lightweight
 `nix` and `markdown` shells. The heavy language shells (Flutter, LaTeX, video,
-PostgreSQL, Java) are eval-only so the check stays practical. CI runs the same
-check plus `statix`, `deadnix`, and `nixfmt`.
+PostgreSQL, Java) are eval-only so the check stays practical. There is no cloud
+CI; run the lint commands locally:
 
 ```bash
 nix flake check
+statix check .
+deadnix --fail .
+nixfmt --check $(git ls-files "*.nix")
 ```
 
 ## 🔒 Security Notes
