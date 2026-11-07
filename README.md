@@ -181,7 +181,8 @@ last shell in the hook wins there. Zed settings merge correctly for all shells.
 `nix flake check` evaluates every language shell and builds the lightweight
 `nix` and `markdown` shells. The heavy language shells (Flutter, LaTeX, video,
 PostgreSQL, Java) are eval-only so the check stays practical. There is no cloud
-CI; `pre-push` runs the checks locally.
+CI; `pre-push` runs the checks locally. A fresh clone needs `./scripts/setup.sh`
+once to point git at `.githooks/`.
 
 模板也是公共接口，单独冒烟（复制到临时目录再 eval，不构建，约 15 秒）：
 
