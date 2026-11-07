@@ -184,11 +184,25 @@ PostgreSQL, Java) are eval-only so the check stays practical. There is no cloud
 CI; `pre-push` runs the checks locally. A fresh clone needs `./scripts/setup.sh`
 once to point git at `.githooks/`.
 
-模板也是公共接口，单独冒烟（复制到临时目录再 eval，不构建，约 15 秒）：
+模板也是公共接口，单独冒烟（复制到临时目录，真的进一次 shell）：
 
 ```bash
-./scripts/check-templates.sh              # 全部
+./scripts/check-templates.sh              # 全部，首次约 1-2 分钟
 ./scripts/check-templates.sh x86_64-linux rust   # 指定模板
+EVAL_ONLY=1 ./scripts/check-templates.sh  # 只实例化，不构建
+```
+
+公共接口的参数名也不能变：
+
+```bash
+./scripts/check-interface.sh              # 对比 interface.json
+./scripts/check-interface.sh --update     # 确认是有意的破坏性变更后，重写基线
+```
+
+文档里的路径引用：
+
+```bash
+./scripts/check-doc-pointers.sh
 ```
 
 Lint 命令：

@@ -4,5 +4,9 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 printf 'pre-push: nix flake check\n' >&2
 nix flake check
+printf 'pre-push: doc pointers\n' >&2
+./scripts/check-doc-pointers.sh
+printf 'pre-push: interface\n' >&2
+./scripts/check-interface.sh
 printf 'pre-push: templates\n' >&2
 ./scripts/check-templates.sh
