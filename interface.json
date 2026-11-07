@@ -1,6 +1,6 @@
 {
   "bevy": {"extraPackages":true},
-  "flutter": {"extraPackages":true,"withEmulator":true},
+  "flutter": {"androidBuildTools":true,"androidCmake":true,"androidNdk":true,"androidPlatforms":true,"extraPackages":true,"withEmulator":true},
   "java": {"extraPackages":true,"jdk":true},
   "latex": {"extraPackages":true},
   "markdown": {"extraPackages":true},
