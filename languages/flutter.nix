@@ -3,6 +3,20 @@
 {
   extraPackages ? [ ],
   withEmulator ? false,
+  # Android 组件由项目声明：不同插件会要求不同的 platform / NDK / CMake。
+  # 默认值是一组已知可用的，项目可以只保留自己需要的。
+  androidPlatforms ? [
+    "36"
+    "35"
+    "28"
+  ],
+  androidBuildTools ? [
+    "36.0.0"
+    "35.0.0"
+    "28.0.3"
+  ],
+  androidNdk ? [ "28.2.13676358" ],
+  androidCmake ? [ "3.22.1" ],
 }:
 
 let
@@ -19,23 +33,13 @@ let
   # Note: Requires config.android_sdk.accept_license = true; to be set in your
   # top-level nixpkgs configuration (e.g., in flake.nix or ~/.config/nixpkgs/config.nix)
   androidComposition = pkgs.androidenv.composeAndroidPackages {
-    buildToolsVersions = [
-      "36.0.0"
-      "35.0.0"
-      "28.0.3"
-    ];
-    platformVersions = [
-      "36"
-      "35"
-      "28"
-    ];
-    # Flutter 3.47 的 Gradle 插件要 NDK 28.2；nix 的 SDK 是只读的，
-    # 缺了它 sdkmanager 会尝试安装并失败。
-    # Flutter 插件的 native 构建要 CMake 3.22.1；nix 的 SDK 只读，缺了就装不上。
-    includeCmake = true;
-    cmakeVersions = [ "3.22.1" ];
-    includeNDK = true;
-    ndkVersions = [ "28.2.13676358" ];
+    buildToolsVersions = androidBuildTools;
+    platformVersions = androidPlatforms;
+    # nix 的 SDK 是只读的，缺组件时 sdkmanager 装不进去，会在构建期报错。
+    includeCmake = androidCmake != [ ];
+    cmakeVersions = androidCmake;
+    includeNDK = androidNdk != [ ];
+    ndkVersions = androidNdk;
     abiVersions = [
       "armeabi-v7a"
       "arm64-v8a"
