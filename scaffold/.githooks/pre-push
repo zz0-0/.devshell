@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# 门在本地，不在 GitHub。
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+./check.sh

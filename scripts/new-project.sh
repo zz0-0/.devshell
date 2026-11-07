@@ -30,6 +30,37 @@ fi
 mkdir -p "$dir"
 (cd "$dir" && nix flake init -t "$root#$lang")
 
+# 通用骨架：与语言无关，所有项目一致。
+if [ -d "$root/scaffold" ]; then
+  (cd "$root/scaffold" && find . -type f -print) | while IFS= read -r f; do
+    dest="$dir/${f#./}"
+    [ -e "$dest" ] && continue
+    mkdir -p "$(dirname "$dest")"
+    cp "$root/scaffold/${f#./}" "$dest"
+  done
+fi
+
+[ -f "$dir/check.sh" ] && chmod +x "$dir/check.sh"
+
+name="$(basename "$dir")"
+cat >"$dir/AGENTS.md" <<EOF
+# $name
+
+<一句话：这个项目为谁存在、让谁不用再做什么>
+
+## 入口
+
+    ./check.sh     # 什么算完成
+
+## 闸门
+
+<哪些动作影响运行中的东西，谁点头；没有就写「没有」>
+
+## 不要
+
+- <这个项目特有的禁令，没有就删掉这一节>
+EOF
+
 if command -v direnv >/dev/null 2>&1; then
   (cd "$dir" && direnv allow) || printf 'warning: direnv allow failed; run it yourself\n' >&2
 else
@@ -42,6 +73,8 @@ created: $dir
 
 next:
   cd $dir
-  check：模板已带一条（环境能否构建）。业务检查写好后，先让它对着旧代码红一次
+  ./scripts/setup.sh     # 装 git hooks
+  ./check.sh             # 模板自带一条：环境能否构建
+  业务检查：写好后先让它对着旧代码红一次，再让它绿
   缺工具：在 flake.nix 里给 devshell.lib.<system>.$lang 传 extraPackages
 EOF
