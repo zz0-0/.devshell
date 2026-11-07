@@ -42,6 +42,6 @@ created: $dir
 
 next:
   cd $dir
-  check：模板默认没有；加的时候先让它对着旧代码红一次，再让它绿
+  check：模板已带一条（环境能否构建）。业务检查写好后，先让它对着旧代码红一次
   缺工具：在 flake.nix 里给 devshell.lib.<system>.$lang 传 extraPackages
 EOF
