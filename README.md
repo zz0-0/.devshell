@@ -68,50 +68,13 @@ Run `direnv allow` here once if you want it loaded automatically.
 | **Java** | `devshell.lib.<system>.java` | jdk25, jdt-language-server, maven, gradle |
 | **Video** | `devshell.lib.<system>.video` | ffmpeg, Chromium, Node, Python, uv, media CLI, Whisper, Assimp |
 
-## 🛠️ Language-Specific Features
+## 公共接口
 
-### Python Environment
-- **Auto-venv**: Creates and activates `.venv/`
-- **Dependency Detection**: Automatically detects and installs from:
-  - `pyproject.toml` + `poetry.lock` → `poetry install`
-  - `pyproject.toml` → `pip install -e .`
-  - `requirements.txt` → `pip install -r requirements.txt`
-- **Hash Tracking**: Only reinstalls when dependencies change
+- `lib.<system>.<lang>` —— 稳定。参数见各语言文件头部。
+- `templates/<lang>` —— 稳定。模板生成的文件也算接口。
+- `languages/`、`scripts/` —— 内部实现，可能变。
 
-### Rust Environment
-- **Cargo Cache**: Runs `cargo fetch` when `Cargo.toml`/`Cargo.lock` changes
-- **Formatting**: rustfmt configured for format-on-save
-
-### Bevy Environment
-- **Everything in Rust**: inherits the Rust shell (cargo, rust-analyzer, rustfmt, clippy, lldb)
-- **Linux runtime**: exposes ALSA, udev, Vulkan and X11/Wayland libraries on `LD_LIBRARY_PATH`
-- **NixOS GPU drivers**: prepends `/run/opengl-driver/lib` and points `VK_ICD_FILENAMES` at the active Vulkan ICD when present
-- **Build tools**: pkg-config, clang, lld, mold, cmake, wayland-protocols, cargo-nextest
-- **Scope**: a separate shell, so plain Rust projects keep their lean toolchain
-
-### Flutter Environment
-- **Android SDK**: Pre-configured with license auto-acceptance
-- **Engine Patch**: NixOS `flutter_tester` executable fix (cached in `/tmp`, keyed by store hash)
-- **Freezed Support**: Auto-runs `build_runner` when freezed is detected
-- **Desktop Development**: Linux desktop dependencies (GTK, X11, Wayland)
-
-### LaTeX Environment
-- **VS Code Integration**: latex-workshop configured with absolute store paths
-- **Zed Integration**: texlab build-on-save with `-outdir=build`; PDF preview
-  via evince (the zed-latex extension auto-configures its synctex wrapper;
-  the shell provides python3 + gi/dbus + evince for it)
-- **Build Automation**: latexmk with synctex, `-outdir=build`
-
-### PostgreSQL Environment
-- **Project-Local Data**: data lives in `.postgres/` inside the project
-- **Helpers**: `start_pg`, `stop_pg`, `reset_pg` commands added to PATH
-
-### Video Environment
-- **Toolchain**: ffmpeg, Chromium, Node, Python, uv, media CLI, Whisper, Assimp
-- **Browser**: Nix Chromium is exported as `HYPERFRAMES_BROWSER_PATH`, `REMOTION_BROWSER_EXECUTABLE`, and `CHROME_PATH`
-- **No auto-venv**: this shell does not create `.venv`; use `uv` when a project needs Python packages
-- **GUI software**: Kdenlive, OBS, GIMP, Inkscape, Audacity, Aegisub, MeshLab, and Blender stay in the NixOS/Home Manager configuration, not in the project shell
-- **Check**: `./scripts/check-video.sh` evaluates the video shell without pulling the LaTeX/Tex Live check
+各语言具体装了什么、依赖怎么同步，见 [docs/languages.md](docs/languages.md)。
 
 ## 🔧 Customizing Environments
 
@@ -218,7 +181,16 @@ last shell in the hook wins there. Zed settings merge correctly for all shells.
 `nix flake check` evaluates every language shell and builds the lightweight
 `nix` and `markdown` shells. The heavy language shells (Flutter, LaTeX, video,
 PostgreSQL, Java) are eval-only so the check stays practical. There is no cloud
-CI; run the lint commands locally:
+CI; `pre-push` runs the checks locally.
+
+模板也是公共接口，单独冒烟（复制到临时目录再 eval，不构建，约 15 秒）：
+
+```bash
+./scripts/check-templates.sh              # 全部
+./scripts/check-templates.sh x86_64-linux rust   # 指定模板
+```
+
+Lint 命令：
 
 ```bash
 nix flake check
@@ -238,6 +210,7 @@ To add a new language:
 1. Create a new file in `languages/` following the existing pattern (uses helpers from `common.nix`)
 2. Add it to the `lib` outputs in `flake.nix`
 3. Add a template directory under `templates/`
+4. Run `./scripts/check-templates.sh x86_64-linux <lang>` and `nix flake check`
 
 ## 📄 License
 
