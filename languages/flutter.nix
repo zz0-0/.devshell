@@ -27,6 +27,9 @@ let
       "36"
       "28"
     ];
+    # Flutter 3.47 的 Gradle 插件要 NDK 28.2；nix 的 SDK 是只读的，
+    # 缺了它 sdkmanager 会尝试安装并失败。
+    ndkVersions = [ "28.2.13676358" ];
     abiVersions = [
       "armeabi-v7a"
       "arm64-v8a"
