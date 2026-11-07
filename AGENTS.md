@@ -3,6 +3,7 @@
 ## 入口
 
 ```bash
+nix run .#new -- <lang> <dir>    # 起新项目（校验、模板、direnv allow）
 nix flake check
 ./scripts/check-interface.sh     # lib.<system>.<lang> 的参数名
 ./scripts/check-templates.sh     # 每个模板真的进得去

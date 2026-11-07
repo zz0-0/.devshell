@@ -15,6 +15,13 @@ A modular Nix flake providing development environments for multiple programming 
 ## 🚀 Quick Start
 
 ```bash
+# Scaffold + direnv allow in one step, then prints the next steps
+nix run github:zz0-0/devshell#new -- python myproj
+```
+
+Or by hand:
+
+```bash
 # 1. Scaffold a project (creates flake.nix + .envrc + .gitignore)
 nix flake init -t github:zz0-0/devshell#python
 

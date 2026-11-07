@@ -58,6 +58,26 @@
 
       formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt-tree);
 
+      # `nix run github:zz0-0/devshell#new -- <lang> <dir>`
+      apps = forAllSystems (
+        { pkgs, ... }:
+        {
+          new = {
+            type = "app";
+            program = "${
+              pkgs.writeShellApplication {
+                name = "new";
+                runtimeInputs = [ pkgs.nix pkgs.direnv ];
+                text = ''
+                  export DEVSHELL_ROOT="${self}"
+                  ${builtins.readFile ./scripts/new-project.sh}
+                '';
+              }
+            }/bin/new";
+          };
+        }
+      );
+
       # Editing this repo itself gets the same Nix tooling as projects.
       devShells = forAllSystems (
         { pkgs, ... }:
