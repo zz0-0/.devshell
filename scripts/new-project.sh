@@ -42,6 +42,6 @@ created: $dir
 
 next:
   cd $dir
-  加 check：模板默认没有，第一条 check 应该是红的
+  check：模板默认没有；加的时候先让它对着旧代码红一次，再让它绿
   缺工具：在 flake.nix 里给 devshell.lib.<system>.$lang 传 extraPackages
 EOF
