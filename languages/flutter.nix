@@ -21,14 +21,20 @@ let
   androidComposition = pkgs.androidenv.composeAndroidPackages {
     buildToolsVersions = [
       "36.0.0"
+      "35.0.0"
       "28.0.3"
     ];
     platformVersions = [
       "36"
+      "35"
       "28"
     ];
     # Flutter 3.47 的 Gradle 插件要 NDK 28.2；nix 的 SDK 是只读的，
     # 缺了它 sdkmanager 会尝试安装并失败。
+    # Flutter 插件的 native 构建要 CMake 3.22.1；nix 的 SDK 只读，缺了就装不上。
+    includeCmake = true;
+    cmakeVersions = [ "3.22.1" ];
+    includeNDK = true;
     ndkVersions = [ "28.2.13676358" ];
     abiVersions = [
       "armeabi-v7a"
@@ -198,7 +204,13 @@ common.mkShell {
             fi
           done
         else
-          ln -sfn "$p" "$PATCHED_SDK/packages/$name"
+          if [ "$name" = "integration_test" ]; then
+            # Gradle 9 把它当成一个项目目录，只读的符号链接会被判成不可用。
+            cp -r "$p" "$PATCHED_SDK/packages/$name"
+            chmod -R u+w "$PATCHED_SDK/packages/$name"
+          else
+            ln -sfn "$p" "$PATCHED_SDK/packages/$name"
+          fi
         fi
       done
 
