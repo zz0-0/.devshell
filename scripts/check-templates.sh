@@ -6,6 +6,14 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# --changed 必须在解析 system 之前摘掉，否则会被当成 system 名。
+changed=0
+if [ "${1:-}" = "--changed" ]; then
+  changed=1
+  shift
+fi
+
 system="${1:-x86_64-linux}"
 shift || true
 mode="${EVAL_ONLY:+eval}"
@@ -41,8 +49,8 @@ changed_template_names() {
   done
 }
 
-if [ "${1:-}" = "--changed" ]; then
-  shift
+if [ "$changed" -eq 1 ]; then
+  names=()
   mapfile -t names < <(changed_template_names)
   if [ "${#names[@]}" -eq 0 ]; then
     printf 'ok   templates（这次没改到任何模板）\n'
