@@ -24,6 +24,6 @@ if [ "$all" -eq 1 ]; then
   ./scripts/check-templates.sh
 else
   printf 'check: templates (changed)\n' >&2
-  base="$(git merge-base HEAD '@{push}' 2>/dev/null || echo HEAD~1)"
+  base="${CHECK_BASE:-$(git merge-base HEAD '@{upstream}' 2>/dev/null || echo HEAD~1)}"
   CHECK_BASE="$base" ./scripts/check-templates.sh --changed
 fi

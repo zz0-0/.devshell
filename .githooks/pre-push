@@ -1,4 +1,20 @@
 #!/usr/bin/env bash
+# 没有 CI，push 前必须过这一关。
+# 起点用 stdin 送来的 remote sha——那才是"这次要验的范围"，
+# 比 merge-base 猜得准：新建分支时是空的，退回去用上游。
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-./scripts/check.sh
+
+base=""
+while read -r _lref _lsha _rref rsha; do
+  [ -n "${rsha:-}" ] || continue
+  [ "$rsha" = "0000000000000000000000000000000000000000" ] && continue
+  [ -n "$base" ] || base="$rsha"
+done
+
+if [ -z "$base" ]; then
+  base="$(git merge-base HEAD '@{upstream}' 2>/dev/null || echo HEAD~1)"
+fi
+
+printf 'pre-push: base %s\n' "$base" >&2
+CHECK_BASE="$base" ./scripts/check.sh
