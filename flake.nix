@@ -53,6 +53,7 @@
           postgresql = import ./languages/postgresql.nix { inherit pkgs; };
           java = import ./languages/java.nix { inherit pkgs; };
           video = import ./languages/video.nix { inherit pkgs; };
+          web = import ./languages/web.nix { inherit pkgs; };
         }
       );
 
