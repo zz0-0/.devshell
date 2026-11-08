@@ -55,6 +55,29 @@ for root in "$@"; do
     done < <(grep -n '<img' "$f" || true)
 
     grep -qE 'name="viewport"' "$f" || note "$f" "没有 viewport meta"
+
+    # ── 收自 vercel-labs/web-interface-guidelines（只留 grep 能判的）──
+    grep -qE '<html[^>]*lang=' "$f" || note "$f" "<html> 没有 lang"
+    grep -qE '<title>' "$f" || note "$f" "没有 <title>"
+    [ "$(grep -oE '<h1' "$f" 2>/dev/null | wc -l)" -le 1 ] || note "$f" "不止一个 <h1>"
+
+    while IFS=: read -r n line; do
+      [ -n "$n" ] || continue
+      case "$line" in *alt=*) ;; *) note "$f:$n" "<img> 没有 alt（装饰性的写 alt=空）" ;; esac
+    done < <(grep -n '<img' "$f" || true)
+
+    while IFS=: read -r n line; do
+      [ -n "$n" ] || continue
+      case "$line" in *noopener*|*noreferrer*) ;; *) note "$f:$n" "target=_blank 没有 rel=noopener" ;; esac
+    done < <(grep -n 'target="_blank"' "$f" || true)
+
+    while IFS=: read -r n line; do
+      [ -n "$n" ] || continue
+      case "$line" in *type=*) ;; *) note "$f:$n" "<button> 没有 type——在 form 里会变成 submit" ;; esac
+    done < <(grep -n '<button' "$f" || true)
+
+    scan "$f" 'tabindex="[1-9]' "正数 tabindex——插队"
+    scan "$f" '<div[^>]*role="button"' "div 冒充按钮"
   done
 done
 
