@@ -1,15 +1,4 @@
 #!/usr/bin/env bash
-# 没有 CI，push 前必须过这一关。
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-printf 'pre-push: nix flake check\n' >&2
-nix flake check
-printf 'pre-push: doc pointers\n' >&2
-./scripts/check-doc-pointers.sh
-printf 'pre-push: interface\n' >&2
-./scripts/check-interface.sh
-# 只验这次改到的模板；动了共享文件才验全部。
-# 起点取 push 的共同祖先，取不到就退回上一次提交。
-printf 'pre-push: templates (changed)\n' >&2
-base="$(git merge-base HEAD '@{push}' 2>/dev/null || echo HEAD~1)"
-CHECK_BASE="$base" ./scripts/check-templates.sh --changed
+./scripts/check.sh

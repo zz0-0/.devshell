@@ -57,6 +57,14 @@
         }
       );
 
+      # 不属于任何语言的工具：可以被任何项目按需拿走。
+      packages = forAllSystems (
+        { pkgs, ... }:
+        {
+          web-check = import ./packages/web-check.nix { inherit pkgs; };
+        }
+      );
+
       formatter = forAllSystems ({ pkgs, ... }: pkgs.nixfmt-tree);
 
       # `nix run github:zz0-0/devshell#new -- <lang> <dir>`
