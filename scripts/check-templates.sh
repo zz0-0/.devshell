@@ -11,7 +11,47 @@ shift || true
 mode="${EVAL_ONLY:+eval}"
 mode="${mode:-full}"
 
-names=("$@")
+# --changed：只验这次改到的模板。改共享文件时退化成全部。
+# 基准默认 HEAD~1，可以用 CHECK_BASE 指到别处（例如 pre-push 的 merge-base）。
+changed_template_names() {
+  local base="${CHECK_BASE:-HEAD~1}" files name all=0
+  files="$(git -C "$root" diff --name-only "$base" -- . 2>/dev/null || true)"
+  [ -n "$files" ] || return 0
+  case "$files" in
+    *languages/common.nix* | *flake.nix* | *scripts/* | *interface.json*)
+      all=1
+      ;;
+  esac
+  if [ "$all" -eq 1 ]; then
+    for d in "$root"/templates/*/; do printf '%s\n' "$(basename "$d")"; done
+    return 0
+  fi
+  printf '%s\n' "$files" | while IFS= read -r f; do
+    case "$f" in
+      languages/*.nix)
+        name="$(basename "$f" .nix)"
+        [ "$name" = common ] || printf '%s\n' "$name"
+        ;;
+      templates/*)
+        printf '%s\n' "${f#templates/}" | cut -d/ -f1
+        ;;
+    esac
+  done | sort -u | while IFS= read -r name; do
+    [ -d "$root/templates/$name" ] && printf '%s\n' "$name"
+  done
+}
+
+if [ "${1:-}" = "--changed" ]; then
+  shift
+  mapfile -t names < <(changed_template_names)
+  if [ "${#names[@]}" -eq 0 ]; then
+    printf 'ok   templates（这次没改到任何模板）\n'
+    exit 0
+  fi
+else
+  names=("$@")
+fi
+
 if [ "${#names[@]}" -eq 0 ]; then
   for d in "$root"/templates/*/; do
     names+=("$(basename "$d")")

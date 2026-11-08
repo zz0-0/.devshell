@@ -104,6 +104,7 @@
             (lib.postgresql { })
             (lib.java { })
             (lib.video { })
+            (lib.web { })
           ];
         in
         {
@@ -158,6 +159,10 @@
         java = mkTemplate {
           name = "java";
           description = "Java project";
+        };
+        web = mkTemplate {
+          name = "web";
+          description = "Static web project";
         };
         video = mkTemplate {
           name = "video";

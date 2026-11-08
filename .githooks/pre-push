@@ -8,5 +8,8 @@ printf 'pre-push: doc pointers\n' >&2
 ./scripts/check-doc-pointers.sh
 printf 'pre-push: interface\n' >&2
 ./scripts/check-interface.sh
-printf 'pre-push: templates\n' >&2
-./scripts/check-templates.sh
+# 只验这次改到的模板；动了共享文件才验全部。
+# 起点取 push 的共同祖先，取不到就退回上一次提交。
+printf 'pre-push: templates (changed)\n' >&2
+base="$(git merge-base HEAD '@{push}' 2>/dev/null || echo HEAD~1)"
+CHECK_BASE="$base" ./scripts/check-templates.sh --changed
