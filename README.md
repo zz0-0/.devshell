@@ -74,10 +74,12 @@ Run `direnv allow` here once if you want it loaded automatically.
 | **PostgreSQL** | `devshell.lib.<system>.postgresql` | postgresql + start_pg/stop_pg/reset_pg helpers |
 | **Java** | `devshell.lib.<system>.java` | jdk25, jdt-language-server, maven, gradle |
 | **Video** | `devshell.lib.<system>.video` | ffmpeg, Chromium, Node, Python, uv, media CLI, Whisper, Assimp |
+| **Web** | `devshell.lib.<system>.web` | node, Chromium, web-check（手写 HTML/CSS 的机械错） |
 
 ## 公共接口
 
 - `lib.<system>.<lang>` —— 稳定。参数见各语言文件头部。
+- `packages.<system>.web-check` —— 单个检查，可以挂到任何语言上（`extraPackages`），不必拖整套 web 工具链。
 - `templates/<lang>` —— 稳定。模板生成的文件也算接口。
 - `languages/`、`scripts/` —— 内部实现，可能变。
 
@@ -121,7 +123,8 @@ devShells.x86_64-linux.default = devshell.lib.x86_64-linux.java {
 │   ├── markdown.nix         # Markdown tooling
 │   ├── postgresql.nix       # PostgreSQL development environment
 │   ├── java.nix             # Java development environment
-│   └── video.nix            # Video production environment
+│   ├── video.nix            # Video production environment
+  └── web.nix              # Static web project
 └── templates/               # `nix flake init -t` scaffolds (one dir per language)
 ```
 

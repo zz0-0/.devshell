@@ -3,11 +3,9 @@
 ## 入口
 
 ```bash
-nix run .#new -- <lang> <dir>    # 起新项目（校验、模板、direnv allow）
-nix flake check
-./scripts/check-interface.sh     # lib.<system>.<lang> 的参数名
-./scripts/check-templates.sh     # 每个模板真的进得去
-./scripts/check-doc-pointers.sh  # 文档里的路径
+./scripts/check.sh               # 默认：eval 全部 + 接口 + 只验改到的模板（钩子跑的是它）
+./scripts/check.sh --all         # 全验：每个模板真的进一次 devShell。发布前跑
+nix run .#new -- <lang> <dir>    # 起新项目
 ```
 
 ## 接口
