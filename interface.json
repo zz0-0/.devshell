@@ -1,42 +1,13 @@
 {
-  "bevy": {
-    "extraPackages": true
-  },
-  "flutter": {
-    "androidBuildTools": true,
-    "androidCmake": true,
-    "androidNdk": true,
-    "androidPlatforms": true,
-    "extraPackages": true,
-    "withEmulator": true
-  },
-  "java": {
-    "extraPackages": true,
-    "jdk": true
-  },
-  "latex": {
-    "extraPackages": true
-  },
-  "markdown": {
-    "extraPackages": true
-  },
-  "nix": {
-    "extraPackages": true
-  },
-  "postgresql": {
-    "extraPackages": true
-  },
-  "python": {
-    "extraPackages": true,
-    "python": true
-  },
-  "rust": {
-    "extraPackages": true
-  },
-  "video": {
-    "extraPackages": true
-  },
-  "web": {
-    "extraPackages": true
-  }
+  "bevy": {"extraPackages":true},
+  "flutter": {"androidBuildTools":true,"androidCmake":true,"androidNdk":true,"androidPlatforms":true,"extraPackages":true,"withEmulator":true},
+  "java": {"extraPackages":true,"jdk":true},
+  "latex": {"extraPackages":true},
+  "markdown": {"extraPackages":true},
+  "nix": {"extraPackages":true},
+  "postgresql": {"extraPackages":true},
+  "python": {"extraPackages":true,"python":true},
+  "rust": {"extraPackages":true},
+  "video": {"extraPackages":true},
+  "web": {"extraPackages":true}
 }
