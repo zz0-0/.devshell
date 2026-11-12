@@ -53,3 +53,4 @@
 - 五道门：check.sh（仓库；还会进 shell 验 ffmpeg / magick / node 在不在）/ stills.sh（静帧 + 批准，绑构图指纹）/ pre-render.sh（上屏数字 + hyperframes check + 静帧批准）/ check-qc.sh（黑帧 / 静止 / 平帧 / 响度）/ check-delivery.sh（deliver.manifest 驱动）。
 - 三张清单：compositions.txt / deliver.manifest / onscreen-allow.txt；没有构图或没有交付物时各门跳过，不红。
 - 设计 = content/FACTS.md + content/STYLE.md；过程写 TRACE.md（日志，只追加）；AGENTS.md 是模板给的槽，`new` 不再覆盖。
+- tools.txt 列这个环境必须提供的命令；check.sh 进 shell 验，缺一个就红（每个模板都有一份）。

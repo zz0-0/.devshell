@@ -1,0 +1,5 @@
+ffmpeg
+ffprobe
+magick
+node
+python3

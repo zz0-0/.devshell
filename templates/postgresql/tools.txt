@@ -1,0 +1,4 @@
+psql
+pg_ctl
+initdb
+createdb

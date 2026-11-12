@@ -14,12 +14,7 @@ echo "== 环境"
 nix flake check
 
 echo "== 工具"
-nix develop --command bash -c '
-  for t in ffmpeg ffprobe magick node python3; do
-    command -v "$t" >/dev/null || { echo "FAIL 缺 $t" >&2; exit 1; }
-  done
-  echo "ok   ffmpeg / ffprobe / magick / node / python3 都在"
-'
+./scripts/check-tools.sh
 
 echo "== 文档指针"; ./scripts/check-doc-pointers.sh
 echo "== 上屏"; python3 scripts/check-onscreen.py

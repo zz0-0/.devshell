@@ -9,3 +9,6 @@ if [ -z "${DIRENV_IN_ENVRC:-}" ] && command -v direnv >/dev/null 2>&1; then
 fi
 
 nix flake check
+
+echo "== 工具"
+./scripts/check-tools.sh
