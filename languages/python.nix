@@ -67,6 +67,7 @@ common.mkShell {
     pythonPkgs.ruff
     pkgs.basedpyright
     pkgs.poetry
+    pkgs.uv
   ]
   ++ extraPackages;
 
