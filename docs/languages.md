@@ -45,3 +45,11 @@
 - **GUI software**: Kdenlive, OBS, GIMP, Inkscape, Audacity, Aegisub, MeshLab, and Blender stay in the NixOS/Home Manager configuration, not in the project shell
 - **Check**: `./scripts/check-video.sh` evaluates the video shell without pulling the LaTeX/Tex Live check
 
+### Video template
+
+`new video <dir>` 建出来的项目自带一条制作链，不是只有环境（文件在 `templates/video/`）：
+
+- film：index.html 是正片根，子构图进 compositions/，试验件进 legacy/。根目录多一个带 data-composition-id 的 html，`hyperframes check` 会报 multiple_root_compositions。
+- 五道门：check.sh（仓库）/ stills.sh（静帧 + 批准，绑构图指纹）/ pre-render.sh（上屏数字 + hyperframes check + 静帧批准）/ check-qc.sh（黑帧 / 静止 / 平帧 / 响度）/ check-delivery.sh（deliver.manifest 驱动）。
+- 三张清单：compositions.txt / deliver.manifest / onscreen-allow.txt；没有构图或没有交付物时各门跳过，不红。
+- 设计 = content/FACTS.md + content/STYLE.md；过程写 TRACE.md（日志，只追加）；AGENTS.md 是模板给的槽，`new` 不再覆盖。

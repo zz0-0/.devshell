@@ -1,0 +1,4 @@
+# 当前交付清单：名字|类型|路径|规格
+# 只放当前版；旧版在 deliver/archive/，不参与门。加一版 = 改这里，不改脚本。
+# 例：ep01|video|deliver/ep01_9x16.mp4|1080x1920
+# 例：ep01|cover|deliver/ep01_cover_9x16.png|1080x1920

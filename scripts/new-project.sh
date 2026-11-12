@@ -43,6 +43,8 @@ fi
 [ -f "$dir/check.sh" ] && chmod +x "$dir/check.sh"
 
 name="$(basename "$dir")"
+# 模板自己带了槽就用模板的；只有通用模板才写占位
+if [ ! -f "$dir/AGENTS.md" ]; then
 cat >"$dir/AGENTS.md" <<EOF
 # $name
 
@@ -60,6 +62,7 @@ cat >"$dir/AGENTS.md" <<EOF
 
 - <这个项目特有的禁令，没有就删掉这一节>
 EOF
+fi
 
 if command -v direnv >/dev/null 2>&1; then
   (cd "$dir" && direnv allow) || printf 'warning: direnv allow failed; run it yourself\n' >&2
