@@ -77,7 +77,19 @@ created: $dir
 next:
   cd $dir
   ./scripts/setup.sh     # 装 git hooks
+EOF
+
+if [ "$lang" = video ]; then
+cat >&2 <<EOF
+  编辑 content/FACTS.md + content/STYLE.md    # 设计：什么必须成立
+  ./check.sh                                # 仓库门（空项目跳过还没有的部分）
+  建片后：scripts/stills.sh → scripts/pre-render.sh → scripts/check-qc.sh → scripts/check-delivery.sh
+  缺工具：在 flake.nix 里给 devshell.lib.<system>.video 传 extraPackages
+EOF
+else
+cat >&2 <<EOF
   ./check.sh             # 模板自带一条：环境能否构建
   业务检查：写好后先让它对着旧代码红一次，再让它绿
   缺工具：在 flake.nix 里给 devshell.lib.<system>.$lang 传 extraPackages
 EOF
+fi
