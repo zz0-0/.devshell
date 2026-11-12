@@ -40,6 +40,8 @@ if [ -d "$root/scaffold" ]; then
   done
 fi
 
+# nix flake init 不保留可执行位：所有脚本补一次
+find "$dir" -maxdepth 3 -type f -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
 [ -f "$dir/check.sh" ] && chmod +x "$dir/check.sh"
 
 name="$(basename "$dir")"
